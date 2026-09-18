@@ -116,17 +116,17 @@
   // ---- screens --------------------------------------------------------------
 
   function homeScreen(vm) {
-    const kids = [];
-    kids.push(el('div', { class: 'home-header' }, [
+    const banner = el('div', { class: 'home-banner' }, [
       el('div', { class: 'brand-row' }, [
         el('div', { class: 'brand-mark' }, ['Rx']),
         el('div', {}, [
-          el('div', { class: 'nav-brand', style: 'font-size:21px;margin-bottom:1px' }, ['PediCalc']),
-          el('p', { class: 'text-muted', style: 'font-size:11.5px;margin:0' }, ['Clinical reference only — verify against institutional protocol.'])
+          el('div', { class: 'nav-brand', style: 'font-size:22px;margin-bottom:2px' }, ['PediCalc']),
+          el('p', { class: 'home-disclaimer' }, ['Clinical reference only — verify against institutional protocol.'])
         ])
       ])
-    ]));
+    ]);
 
+    const kids = [];
     kids.push(el('button', { class: 'patient-chip', onclick: vm.goPatient }, [
       icon(ICONS.user, { size: 22, className: 'patient-chip-icon' }),
       el('div', { style: 'flex:1;min-width:0' }, [
@@ -179,9 +179,9 @@
     } else {
       const grid = el('div', { class: 'category-grid' });
       vm.homeCategories.forEach(function (cat) {
-        grid.appendChild(el('div', { class: 'card elev-sm category-card tap-card', onclick: cat.onClick }, [
-          icon(cat.iconD, { size: 24, stroke: 'var(--color-neutral-900)' }),
-          el('div', { class: 'card-title', style: 'font-size:14px' }, [cat.label]),
+        grid.appendChild(el('div', { class: 'card elev-sm category-card tap-card', 'data-cat': cat.id, onclick: cat.onClick }, [
+          el('div', { class: 'cat-icon-badge' }, [icon(cat.iconD, { size: 20, className: 'cat-icon' })]),
+          el('div', { class: 'card-title', style: 'font-size:14.5px' }, [cat.label]),
           el('div', { class: 'card-meta' }, [cat.count + ' tools'])
         ]));
       });
@@ -213,7 +213,7 @@
       ]));
     }
 
-    return el('div', { class: 'screen screen-home' }, kids);
+    return el('div', { class: 'screen screen-home' }, [banner, el('div', { class: 'home-body' }, kids)]);
   }
 
   function headerBar(back, iconD, title, trailing) {
