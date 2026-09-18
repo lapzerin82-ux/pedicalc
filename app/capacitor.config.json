@@ -1,0 +1,16 @@
+{
+  "appId": "com.pedicalc.app",
+  "appName": "PediCalc",
+  "webDir": "www",
+  "backgroundColor": "#fcfcfc",
+  "android": {
+    "backgroundColor": "#fcfcfc"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "backgroundColor": "#fcfcfc",
+      "launchAutoHide": true,
+      "launchFadeOutDuration": 200
+    }
+  }
+}

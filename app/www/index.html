@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+<title>PediCalc — Paediatric Clinical Calculator</title>
+<meta name="description" content="Weight-based paediatric drug dosing and clinical decision-support calculators, sourced from BNF for Children.">
+<meta name="theme-color" content="#fcfcfc">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PediCalc">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<noscript>This app requires JavaScript.</noscript>
+<div id="app" role="application" aria-label="PediCalc"></div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/render.js"></script>
+<script>
+(function () {
+  var app = new window.PediCalcApp({ weightUnit: 'kg', requireCautionAck: false });
+  var root = document.getElementById('app');
+
+  function draw() { window.PediCalcRender.render(root, app.renderVals()); }
+  app.subscribe(draw);
+  draw();
+
+  // Hardware/gesture back button (Android via Capacitor): mirror the
+  // in-app back arrow instead of letting the shell exit the app.
+  document.addEventListener('backbutton', handleBack, false);
+  document.addEventListener('deviceready', function () {
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+      window.Capacitor.Plugins.App.addListener('backButton', handleBack);
+    }
+  });
+  function handleBack() {
+    var s = app.state.screen;
+    if (s === 'calc') app.renderVals().calcView.back();
+    else if (s === 'category') app.goHome();
+    else if (s !== 'home') app.goHome();
+    else if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+      window.Capacitor.Plugins.App.exitApp();
+    }
+  }
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
