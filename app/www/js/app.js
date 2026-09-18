@@ -194,7 +194,22 @@
               key: f.key, label: f.label, isSelect: true, isSeg: false, isNumber: false,
               isSearchable: true, filterQuery: this.state.drugFilter || '',
               filterCountLabel: q ? (list.length + ' of ' + calc.drugs.length + ' medications') : (calc.drugs.length + ' medications'),
-              onFilterChange: (e) => this.setState({ drugFilter: e.target.value }),
+              onFilterChange: (e) => {
+                const query = e.target.value;
+                const needle = query.trim().toLowerCase();
+                const topHit = needle ? calc.drugs.find(d => (d.name + ' ' + (d.group || '') + ' ' + (d.route || '')).toLowerCase().includes(needle)) : null;
+                this.setState(s => {
+                  const patch = { drugFilter: query };
+                  if (topHit) {
+                    const prev = s.inputsByCalc[calc.id] || {};
+                    patch.inputsByCalc = {
+                      ...s.inputsByCalc,
+                      [calc.id]: { ...prev, drug: topHit.id, strength: String((topHit.strengths && topHit.strengths[0]) ? topHit.strengths[0].value : '1') }
+                    };
+                  }
+                  return patch;
+                });
+              },
               value: val, groups,
               onChange: (e) => {
                 this.updateField(calc.id, f.key, e.target.value);
