@@ -11,7 +11,7 @@
         screen: 'home', tab: 'home', categoryId: null, calcId: null,
         calcOrigin: null, calcOriginCategory: null,
         search: '', drugFilter: '', inputsByCalc: {}, saved: [], ack: {},
-        patient: { weightKg: null, heightCm: null, ageValue: null, ageUnit: 'years', sex: 'M', name: '' }
+        patient: { weightKg: null, heightCm: null, ageValue: null, ageUnit: 'years', sex: 'M', name: '', weightText: '', heightText: '', ageText: '' }
       };
       this.CATEGORIES = CATEGORIES;
       this.CALCS = CALCS;
@@ -33,6 +33,13 @@
         const patient = JSON.parse(localStorage.getItem('pedicalc.patient'));
         if (patient && typeof patient === 'object') this.state.patient = Object.assign({}, this.state.patient, patient);
       } catch (e) {}
+      // weightText/heightText/ageText are the live editing buffers shown in the
+      // input; derive them from the persisted numeric values so a reopened app
+      // shows the saved patient info (these buffers are not themselves persisted).
+      const p = this.state.patient;
+      if (!p.weightText && p.weightKg != null) p.weightText = String(this.displayWeight(p.weightKg));
+      if (!p.heightText && p.heightCm != null) p.heightText = String(p.heightCm);
+      if (!p.ageText && p.ageValue != null) p.ageText = String(p.ageValue);
     }
 
     _persist() {
@@ -289,15 +296,34 @@
         const weightUnit = this.props.weightUnit || 'kg';
         const patientChipLabel = patient.weightKg ? (this.displayWeight(patient.weightKg) + ' ' + weightUnit + (patient.ageValue ? ' · ' + patient.ageValue + (patient.ageUnit === 'years' ? 'y' : 'mo') : '')) : 'Tap to add patient info';
         const patientView = {
-          name: patient.name, weightUnit, weightDisplay: patient.weightKg != null ? this.displayWeight(patient.weightKg) : '',
-          heightDisplay: patient.heightCm != null ? patient.heightCm : '', ageDisplay: patient.ageValue != null ? patient.ageValue : '',
+          name: patient.name, weightUnit,
+          weightDisplay: patient.weightText != null ? patient.weightText : '',
+          heightDisplay: patient.heightText != null ? patient.heightText : '',
+          ageDisplay: patient.ageText != null ? patient.ageText : '',
           onName: (e) => this.setState(s => ({ patient: { ...s.patient, name: e.target.value } })),
-          onWeight: (e) => { const n = Number(e.target.value); this.setState(s => ({ patient: { ...s.patient, weightKg: isNaN(n) ? null : this.toKg(n) } })); },
-          onHeight: (e) => { const n = Number(e.target.value); this.setState(s => ({ patient: { ...s.patient, heightCm: isNaN(n) ? null : n } })); },
-          onAge: (e) => { const n = Number(e.target.value); this.setState(s => ({ patient: { ...s.patient, ageValue: isNaN(n) ? null : n } })); },
+          // Store the raw text verbatim (so a trailing "." or in-progress decimal
+          // isn't stripped by re-rendering with a rounded value) while also
+          // keeping the parsed numeric field up to date for use elsewhere
+          // (prefill, patient chip, persistence). An empty field clears the
+          // numeric value; text that doesn't yet parse leaves it unchanged.
+          onWeight: (e) => {
+            const text = e.target.value; const n = Number(text);
+            this.setState(s => ({ patient: { ...s.patient, weightText: text,
+              weightKg: text.trim() === '' ? null : (isNaN(n) ? s.patient.weightKg : this.toKg(n)) } }));
+          },
+          onHeight: (e) => {
+            const text = e.target.value; const n = Number(text);
+            this.setState(s => ({ patient: { ...s.patient, heightText: text,
+              heightCm: text.trim() === '' ? null : (isNaN(n) ? s.patient.heightCm : n) } }));
+          },
+          onAge: (e) => {
+            const text = e.target.value; const n = Number(text);
+            this.setState(s => ({ patient: { ...s.patient, ageText: text,
+              ageValue: text.trim() === '' ? null : (isNaN(n) ? s.patient.ageValue : n) } }));
+          },
           ageUnitOptions: [ { value: 'months', label: 'mo' }, { value: 'years', label: 'yr' } ].map(o => ({ ...o, checked: patient.ageUnit === o.value, onSelect: () => this.setState(s => ({ patient: { ...s.patient, ageUnit: o.value } })) })),
           sexOptions: [ { value: 'M', label: 'Male' }, { value: 'F', label: 'Female' } ].map(o => ({ ...o, checked: patient.sex === o.value, onSelect: () => this.setState(s => ({ patient: { ...s.patient, sex: o.value } })) })),
-          onClear: () => this.setState({ patient: { weightKg: null, heightCm: null, ageValue: null, ageUnit: 'years', sex: 'M', name: '' } })
+          onClear: () => this.setState({ patient: { weightKg: null, heightCm: null, ageValue: null, ageUnit: 'years', sex: 'M', name: '', weightText: '', heightText: '', ageText: '' } })
         };
         const tab = this.state.tab;
         const drugHits = hasSearch ? this.matchDrugs(search).slice(0, 12) : [];

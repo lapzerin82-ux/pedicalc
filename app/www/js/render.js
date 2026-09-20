@@ -250,7 +250,7 @@
       return el('div', { class: 'field' }, [
         el('label', {}, [f.label]),
         el('input', {
-          class: 'input', type: 'number', inputmode: 'decimal', step: f.step, value: f.value,
+          class: 'input', type: 'text', inputmode: 'decimal', step: f.step, value: f.value,
           focusKey: 'field:' + f.key, oninput: f.onChange
         })
       ]);
@@ -399,16 +399,16 @@
       ]),
       el('div', { class: 'field', style: 'margin-bottom:12px' }, [
         el('label', {}, ['Weight (' + pv.weightUnit + ')']),
-        el('input', { class: 'input', type: 'number', inputmode: 'decimal', value: pv.weightDisplay, focusKey: 'patient-weight', oninput: pv.onWeight })
+        el('input', { class: 'input', type: 'text', inputmode: 'decimal', value: pv.weightDisplay, focusKey: 'patient-weight', oninput: pv.onWeight })
       ]),
       el('div', { class: 'field', style: 'margin-bottom:12px' }, [
         el('label', {}, ['Height (cm)']),
-        el('input', { class: 'input', type: 'number', inputmode: 'decimal', value: pv.heightDisplay, focusKey: 'patient-height', oninput: pv.onHeight })
+        el('input', { class: 'input', type: 'text', inputmode: 'decimal', value: pv.heightDisplay, focusKey: 'patient-height', oninput: pv.onHeight })
       ]),
       el('div', { class: 'field', style: 'margin-bottom:12px' }, [
         el('label', {}, ['Age']),
         el('div', { style: 'display:flex;gap:8px' }, [
-          el('input', { class: 'input', type: 'number', inputmode: 'decimal', style: 'flex:1', value: pv.ageDisplay, focusKey: 'patient-age', oninput: pv.onAge }),
+          el('input', { class: 'input', type: 'text', inputmode: 'decimal', style: 'flex:1', value: pv.ageDisplay, focusKey: 'patient-age', oninput: pv.onAge }),
           ageSeg
         ])
       ]),
