@@ -229,12 +229,12 @@ const CALCS = [
   ], name: 'Artemether with lumefantrine', group: 'Antiparasitic (BNFC)', mode: 'reference', route: 'PO', dosePanel: 'Acute uncomplicated falciparum malaria — dosed by TABLET COUNT per weight band, 6 doses over 60 hours (at 0, 8, 24, 36, 48, 60 hours). 5–14kg: 1 tablet/dose (6 total). 15–24kg: 2 tablets/dose (12 total). 25–34kg: 3 tablets/dose (18 total). ≥35kg: 4 tablets/dose (24 total). Take with food or milky drink.', strengths: [] },
           { id: 'atovaquone-proguanil', weightBands: [
     { max: 7, label: '5–7 kg: 0.5 × 62.5mg/25mg tablet once daily' },
-    { max: 10, label: '8–10 kg: 0.75 × 62.5mg/25mg tablet once daily' },
-    { max: 20, label: '11–20 kg: 1 × 62.5mg/25mg tablet once daily' },
-    { max: 30, label: '21–30 kg: 2 × 62.5mg/25mg tablets once daily' },
-    { max: 40, label: '31–40 kg: 3 × 62.5mg/25mg tablets once daily' },
+    { max: 9, label: '8–9 kg: 0.75 × 62.5mg/25mg tablet once daily' },
+    { max: 19, label: '10–19 kg: 1 × 62.5mg/25mg tablet once daily' },
+    { max: 29, label: '20–29 kg: 2 × 62.5mg/25mg tablets once daily' },
+    { max: 39, label: '30–39 kg: 3 × 62.5mg/25mg tablets once daily' },
     { max: Infinity, label: '≥40 kg: 1 × 250mg/100mg (standard) tablet once daily' }
-  ], name: 'Atovaquone with proguanil', group: 'Antiparasitic (BNFC)', mode: 'reference', route: 'PO', dosePanel: 'Falciparum malaria prophylaxis — dosed by TABLET COUNT per weight band, once daily, started 1–2 days before entering endemic area and continued 1 week after leaving. Paediatric 62.5mg/25mg tablets: 5–7kg 0.5 tablet; 8–10kg 0.75 tablet; 11–20kg 1 tablet; 21–30kg 2 tablets; 31–40kg 3 tablets. Standard 250mg/100mg tablets: ≥40kg 1 tablet once daily.', strengths: [] },
+  ], name: 'Atovaquone with proguanil', group: 'Antiparasitic (BNFC 2022–23)', mode: 'reference', route: 'PO', dosePanel: 'Falciparum malaria prophylaxis — dosed by TABLET COUNT per weight band, once daily, started 1–2 days before entering endemic area and continued 1 week after leaving. Paediatric 62.5mg/25mg tablets: 5–7kg 0.5 tablet; 8–9kg 0.75 tablet; 10–19kg 1 tablet; 20–29kg 2 tablets; 30–39kg 3 tablets. Standard 250mg/100mg tablets: ≥40kg 1 tablet once daily.', source: 'BNF for Children 2022–2023 (user-provided extract).', strengths: [] },
           { id: 'amiodarone', name: 'Amiodarone', group: 'Cardiac (BNFC)', mgPerKg: 7.5, maxDose: 200, maxDaily: 400, freq: 'twice daily for 7–10 days (loading), then reduce to once daily', route: 'PO', doseText: '5–10 mg/kg/dose twice daily loading, specialist supervision (BNFC)', strengths: [ { value: '5', label: '5mg/mL oral suspension' } ] },
           { id: 'adenosine', name: 'Adenosine', group: 'Cardiac (BNFC)', mgPerKg: 0.1, maxDose: 12, maxDaily: 12, freq: 'rapid IV push, may increase stepwise if SVT not terminated', route: 'IV', doseText: '~100 micrograms/kg initial, titrate up (BNFC)', strengths: [ { value: '3', label: '3mg/mL' } ] },
           { id: 'captopril', name: 'Captopril', group: 'Cardiac (BNFC)', mgPerKg: 0.05, maxDose: 2, maxDaily: 6, freq: '2–3 times daily — give a test dose first, specialist supervision', route: 'PO', doseText: '10–50 micrograms/kg/dose (test dose first) (BNFC)', strengths: [ { value: '1', label: '1mg/mL oral suspension' } ] },
