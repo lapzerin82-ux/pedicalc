@@ -255,6 +255,25 @@
         })
       ]);
     }
+    if (f.isAgeCombo) {
+      const ageSeg = el('div', { class: 'seg' });
+      f.ageUnitOptions.forEach(function (u) {
+        ageSeg.appendChild(el('label', { class: 'seg-opt' }, [
+          el('input', { type: 'radio', name: 'agecombo-unit-' + f.key, checked: u.checked, onchange: u.onSelect }),
+          el('span', {}, [u.label])
+        ]));
+      });
+      return el('div', { class: 'field' }, [
+        el('label', {}, [f.label]),
+        el('div', { style: 'display:flex;gap:8px' }, [
+          el('input', {
+            class: 'input', type: 'text', inputmode: 'decimal', style: 'flex:1', value: f.value,
+            focusKey: 'field:' + f.key, oninput: f.onChange
+          }),
+          ageSeg
+        ])
+      ]);
+    }
     if (f.isSeg) {
       const seg = el('div', { class: 'seg', style: 'width:100%' });
       f.options.forEach(function (opt) {

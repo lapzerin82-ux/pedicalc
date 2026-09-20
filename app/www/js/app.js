@@ -82,6 +82,10 @@
             if (f.type === 'number' && f.prefillWeight) {
               init[f.key] = prev[f.key] !== undefined ? prev[f.key]
                 : (s.patient.weightKg ? String(this.displayWeight(s.patient.weightKg)) : String(f.default));
+            } else if (f.type === 'ageCombo' && f.prefillAge) {
+              init[f.key] = prev[f.key] !== undefined ? prev[f.key]
+                : (s.patient.ageValue != null ? String(s.patient.ageValue) : String(f.default));
+              init[f.key + 'Unit'] = prev[f.key + 'Unit'] !== undefined ? prev[f.key + 'Unit'] : (s.patient.ageUnit || 'years');
             } else if (f.key === 'drug') init[f.key] = drug.id;
             else if (f.key === 'strength') init[f.key] = String((drug.strengths && drug.strengths[0]) ? drug.strengths[0].value : '1');
             else init[f.key] = prev[f.key] !== undefined ? prev[f.key] : String(f.default);
@@ -118,6 +122,10 @@
             const init = {};
             calc.fields.forEach(f => {
               if (f.type === 'number' && f.prefillWeight && s.patient.weightKg) init[f.key] = String(this.displayWeight(s.patient.weightKg));
+              else if (f.type === 'ageCombo' && f.prefillAge) {
+                init[f.key] = s.patient.ageValue != null ? String(s.patient.ageValue) : String(f.default);
+                init[f.key + 'Unit'] = s.patient.ageUnit || 'years';
+              }
               else if (f.key === 'drug' && calc.drugs) init[f.key] = calc.drugs[0].id;
               else if (f.key === 'strength' && calc.drugs) init[f.key] = String((calc.drugs[0].strengths && calc.drugs[0].strengths[0]) ? calc.drugs[0].strengths[0].value : '1');
               else init[f.key] = String(f.default);
@@ -158,6 +166,14 @@
             const r = raw[f.key] !== undefined ? raw[f.key] : f.default;
             let n = Number(r); if (isNaN(n)) n = Number(f.default);
             v[f.key] = f.prefillWeight ? this.toKg(n) : n;
+          } else if (f.type === 'ageCombo') {
+            const text = raw[f.key] !== undefined ? raw[f.key] : f.default;
+            const unit = raw[f.key + 'Unit'] || 'years';
+            const n = Number(text);
+            const valid = String(text).trim() !== '' && !isNaN(n);
+            v.ageValue = valid ? n : null;
+            v.ageUnit = unit;
+            v.ageMonths = valid ? (unit === 'months' ? n : n * 12) : null;
           } else {
             v[f.key] = raw[f.key] !== undefined ? raw[f.key] : f.default;
           }
@@ -235,6 +251,17 @@
                   if (opts[0]) this.updateField(calc.id, 'strength', String(opts[0].value));
                 }
               } }))
+            };
+          }
+          if (f.type === 'ageCombo') {
+            const unit = raw[f.key + 'Unit'] || 'years';
+            return {
+              key: f.key, label: f.label, isAgeCombo: true, isNumber: false, isSeg: false, isSelect: false,
+              value: val,
+              onChange: (e) => this.updateField(calc.id, f.key, e.target.value),
+              ageUnitOptions: [ { value: 'months', label: 'mo' }, { value: 'years', label: 'yr' } ].map(o => ({
+                ...o, checked: unit === o.value, onSelect: () => this.updateField(calc.id, f.key + 'Unit', o.value)
+              }))
             };
           }
           return {
