@@ -1,4 +1,4 @@
-const CACHE = 'pedicalc-v12';
+const CACHE = 'pedicalc-v13';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './css/styles.css', './js/data.js', './js/app.js', './js/render.js',
