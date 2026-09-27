@@ -164,7 +164,9 @@
             v.strength = opts.some(o => String(o.value) === String(val)) ? val : (opts[0] ? opts[0].value : '1');
           } else if (f.type === 'number') {
             const r = raw[f.key] !== undefined ? raw[f.key] : f.default;
-            let n = Number(r); if (isNaN(n)) n = Number(f.default);
+            const rt = String(r).trim();
+            let n = rt === '' ? Number(f.default) : Number(r);
+            if (isNaN(n)) n = Number(f.default);
             v[f.key] = f.prefillWeight ? this.toKg(n) : n;
           } else if (f.type === 'ageCombo') {
             const text = raw[f.key] !== undefined ? raw[f.key] : f.default;
@@ -259,6 +261,7 @@
               key: f.key, label: f.label, isAgeCombo: true, isNumber: false, isSeg: false, isSelect: false,
               value: val,
               onChange: (e) => this.updateField(calc.id, f.key, e.target.value),
+              onClear: () => this.updateField(calc.id, f.key, ''),
               ageUnitOptions: [ { value: 'months', label: 'mo' }, { value: 'years', label: 'yr' } ].map(o => ({
                 ...o, checked: unit === o.value, onSelect: () => this.updateField(calc.id, f.key + 'Unit', o.value)
               }))
@@ -267,7 +270,8 @@
           return {
             key: f.key, label: f.prefillWeight ? (f.label + ' (' + (this.props.weightUnit || 'kg') + ')') : f.label,
             isSeg: false, isNumber: true, value: val, step: f.step || 1,
-            onChange: (e) => this.updateField(calc.id, f.key, e.target.value)
+            onChange: (e) => this.updateField(calc.id, f.key, e.target.value),
+            onClear: () => this.updateField(calc.id, f.key, '')
           };
         });
       }
@@ -350,6 +354,9 @@
           },
           ageUnitOptions: [ { value: 'months', label: 'mo' }, { value: 'years', label: 'yr' } ].map(o => ({ ...o, checked: patient.ageUnit === o.value, onSelect: () => this.setState(s => ({ patient: { ...s.patient, ageUnit: o.value } })) })),
           sexOptions: [ { value: 'M', label: 'Male' }, { value: 'F', label: 'Female' } ].map(o => ({ ...o, checked: patient.sex === o.value, onSelect: () => this.setState(s => ({ patient: { ...s.patient, sex: o.value } })) })),
+          onClearWeight: () => this.setState(s => ({ patient: { ...s.patient, weightText: '', weightKg: null } })),
+          onClearHeight: () => this.setState(s => ({ patient: { ...s.patient, heightText: '', heightCm: null } })),
+          onClearAge: () => this.setState(s => ({ patient: { ...s.patient, ageText: '', ageValue: null } })),
           onClear: () => this.setState({ patient: { weightKg: null, heightCm: null, ageValue: null, ageUnit: 'years', sex: 'M', name: '', weightText: '', heightText: '', ageText: '' } })
         };
         const tab = this.state.tab;

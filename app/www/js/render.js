@@ -13,7 +13,10 @@
       if (k === 'class') node.className = v;
       else if (k === 'html') node.innerHTML = v;
       else if (k.indexOf('on') === 0 && typeof v === 'function') {
-        node.addEventListener(k.slice(2).toLowerCase(), v);
+        // Property assignment (not addEventListener) so a reused live node
+        // (see reuseFocusedNode) can simply be handed this render's fresh
+        // closure without needing to track/remove a previous listener.
+        node[k] = v;
       } else if (k === 'focusKey') {
         node.setAttribute('data-focus-key', v);
       } else if (v === true) {
@@ -94,6 +97,18 @@
   }
 
   // ---- focus preservation across full re-renders --------------------------
+  //
+  // Every render tears down and rebuilds the whole screen from scratch, which
+  // is simple but hostile to a focused text input: recreating the DOM node a
+  // mobile keyboard/IME is actively composing into is what caused the
+  // long-standing "digits land in the wrong order" / "hard to backspace" bug
+  // on Android WebView (its InputConnection can desync from a brand-new
+  // element's value/selection even when we carefully try to restore the
+  // caret with setSelectionRange). The fix is to never recreate the node the
+  // user is currently typing in: reuseFocusedNode() below transplants the
+  // SAME live <input> into the freshly-built tree (syncing only its
+  // non-value attributes and event handlers), so its value and caret are
+  // whatever the browser already has natively — nothing to get wrong.
   function captureFocus(root) {
     const a = document.activeElement;
     if (!a || !root.contains(a)) return null;
@@ -101,7 +116,27 @@
     if (!key) return null;
     let sel = null;
     try { sel = { start: a.selectionStart, end: a.selectionEnd }; } catch (e) {}
-    return { key: key, sel: sel };
+    return { key: key, sel: sel, node: a };
+  }
+  function reuseFocusedNode(newTree, snap) {
+    if (!snap || !snap.node) return false;
+    const placeholder = newTree.querySelector('[data-focus-key="' + CSS.escape(snap.key) + '"]');
+    if (!placeholder || placeholder.tagName !== snap.node.tagName) return false;
+    const live = snap.node;
+    // Sync attributes other than value (class/placeholder/step/inputmode/...)
+    // without ever touching value/selection on the live node.
+    Array.prototype.slice.call(live.attributes).forEach(function (attr) {
+      if (attr.name === 'value' || attr.name === 'data-focus-key') return;
+      if (!placeholder.hasAttribute(attr.name)) live.removeAttribute(attr.name);
+    });
+    Array.prototype.forEach.call(placeholder.attributes, function (attr) {
+      if (attr.name === 'value') return;
+      if (live.getAttribute(attr.name) !== attr.value) live.setAttribute(attr.name, attr.value);
+    });
+    live.oninput = placeholder.oninput;
+    live.onchange = placeholder.onchange;
+    placeholder.parentNode.replaceChild(live, placeholder);
+    return true;
   }
   function restoreFocus(root, snap) {
     if (!snap) return;
@@ -249,10 +284,13 @@
     if (f.isNumber) {
       return el('div', { class: 'field' }, [
         el('label', {}, [f.label]),
-        el('input', {
-          class: 'input', type: 'text', inputmode: 'decimal', step: f.step, value: f.value,
-          focusKey: 'field:' + f.key, oninput: f.onChange
-        })
+        el('div', { class: 'field-row' }, [
+          el('input', {
+            class: 'input', type: 'text', inputmode: 'decimal', step: f.step, value: f.value,
+            focusKey: 'field:' + f.key, oninput: f.onChange
+          }),
+          el('button', { class: 'field-clear-btn', type: 'button', 'aria-label': 'Clear ' + f.label, onclick: f.onClear }, [icon(ICONS.close, { size: 16 })])
+        ])
       ]);
     }
     if (f.isAgeCombo) {
@@ -270,6 +308,7 @@
             class: 'input', type: 'text', inputmode: 'decimal', style: 'flex:1', value: f.value,
             focusKey: 'field:' + f.key, oninput: f.onChange
           }),
+          el('button', { class: 'field-clear-btn', type: 'button', 'aria-label': 'Clear ' + f.label, onclick: f.onClear }, [icon(ICONS.close, { size: 16 })]),
           ageSeg
         ])
       ]);
@@ -418,16 +457,23 @@
       ]),
       el('div', { class: 'field', style: 'margin-bottom:12px' }, [
         el('label', {}, ['Weight (' + pv.weightUnit + ')']),
-        el('input', { class: 'input', type: 'text', inputmode: 'decimal', value: pv.weightDisplay, focusKey: 'patient-weight', oninput: pv.onWeight })
+        el('div', { class: 'field-row' }, [
+          el('input', { class: 'input', type: 'text', inputmode: 'decimal', value: pv.weightDisplay, focusKey: 'patient-weight', oninput: pv.onWeight }),
+          el('button', { class: 'field-clear-btn', type: 'button', 'aria-label': 'Clear weight', onclick: pv.onClearWeight }, [icon(ICONS.close, { size: 16 })])
+        ])
       ]),
       el('div', { class: 'field', style: 'margin-bottom:12px' }, [
         el('label', {}, ['Height (cm)']),
-        el('input', { class: 'input', type: 'text', inputmode: 'decimal', value: pv.heightDisplay, focusKey: 'patient-height', oninput: pv.onHeight })
+        el('div', { class: 'field-row' }, [
+          el('input', { class: 'input', type: 'text', inputmode: 'decimal', value: pv.heightDisplay, focusKey: 'patient-height', oninput: pv.onHeight }),
+          el('button', { class: 'field-clear-btn', type: 'button', 'aria-label': 'Clear height', onclick: pv.onClearHeight }, [icon(ICONS.close, { size: 16 })])
+        ])
       ]),
       el('div', { class: 'field', style: 'margin-bottom:12px' }, [
         el('label', {}, ['Age']),
         el('div', { style: 'display:flex;gap:8px' }, [
           el('input', { class: 'input', type: 'text', inputmode: 'decimal', style: 'flex:1', value: pv.ageDisplay, focusKey: 'patient-age', oninput: pv.onAge }),
+          el('button', { class: 'field-clear-btn', type: 'button', 'aria-label': 'Clear age', onclick: pv.onClearAge }, [icon(ICONS.close, { size: 16 })]),
           ageSeg
         ])
       ]),
@@ -458,7 +504,8 @@
     const prevScroller = root.querySelector('.screen-scroll');
     const scroll = prevScroller ? prevScroller.scrollTop : 0;
     const prevScreen = prevScroller && prevScroller.firstChild && prevScroller.firstChild.className;
-    root.innerHTML = '';
+    // Build the new tree BEFORE clearing root, so the live focused node (if
+    // any) is still attached/valid when reuseFocusedNode splices it in.
     let content;
     if (vm.isHome) content = homeScreen(vm);
     else if (vm.isCategory) content = categoryScreen(vm);
@@ -466,10 +513,13 @@
     else if (vm.isSaved) content = savedScreen(vm);
     else if (vm.isPatient) content = patientScreen(vm);
     const scroller = el('div', { class: 'screen-scroll' }, [content]);
+    const reused = reuseFocusedNode(scroller, snap);
+    root.innerHTML = '';
     root.appendChild(scroller);
     root.appendChild(bottomNav(vm));
     if (prevScreen === content.className) scroller.scrollTop = scroll;
-    restoreFocus(root, snap);
+    if (reused) snap.node.focus();
+    else restoreFocus(root, snap);
   }
 
   window.PediCalcRender = { render: render };

@@ -142,6 +142,15 @@ input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
 select.input { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--color-neutral-600) 50%), linear-gradient(135deg, var(--color-neutral-600) 50%, transparent 50%); background-position: calc(100% - 20px) calc(50% - 3px), calc(100% - 15px) calc(50% - 3px); background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
+.field-row { display: flex; gap: 8px; align-items: stretch; }
+.field-row .input { flex: 1; min-width: 0; }
+.field-clear-btn {
+  flex-shrink: 0; width: 44px; min-height: 46px; border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-divider); background: #fff; color: var(--color-neutral-600);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: background .12s ease, border-color .12s ease;
+}
+.field-clear-btn:hover, .field-clear-btn:active { background: var(--color-surface); border-color: var(--color-neutral-400); }
 .seg { display: flex; overflow: hidden; border: 1.5px solid var(--color-divider); border-radius: var(--radius-pill); background: #fff; }
 .seg-opt { display: flex; align-items: center; gap: 6px; padding: 11px 12px; font-size: 13px; font-weight: 700; cursor: pointer; min-height: 44px; transition: background .12s ease; }
 .seg-opt input, .seg-opt input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
