@@ -24,12 +24,36 @@
 <script src="js/render.js"></script>
 <script>
 (function () {
-  var app = new window.PediCalcApp({ weightUnit: 'kg', requireCautionAck: false });
+  var deferredInstallPrompt = null;
+  var app = new window.PediCalcApp({
+    weightUnit: 'kg', requireCautionAck: false,
+    onInstallRequest: function () {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.finally(function () {
+        deferredInstallPrompt = null;
+        app.setInstallAvailable(false);
+      });
+    }
+  });
   var root = document.getElementById('app');
 
   function draw() { window.PediCalcRender.render(root, app.renderVals()); }
   app.subscribe(draw);
   draw();
+
+  // Installable PWA: Chrome/Edge/Android fire this instead of showing their
+  // own install UI, so we can offer install from inside the app itself.
+  // Safari/iOS never fire it — the install icon simply stays hidden there.
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    app.setInstallAvailable(true);
+  });
+  window.addEventListener('appinstalled', function () {
+    deferredInstallPrompt = null;
+    app.setInstallAvailable(false);
+  });
 
   // Hardware/gesture back button (Android via Capacitor): mirror the
   // in-app back arrow instead of letting the shell exit the app.

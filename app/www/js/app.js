@@ -11,7 +11,8 @@
         screen: 'home', tab: 'home', categoryId: null, calcId: null,
         calcOrigin: null, calcOriginCategory: null,
         search: '', drugFilter: '', inputsByCalc: {}, saved: [], ack: {},
-        patient: { weightKg: null, heightCm: null, ageValue: null, ageUnit: 'years', sex: 'M', name: '', weightText: '', heightText: '', ageText: '' }
+        patient: { weightKg: null, heightCm: null, ageValue: null, ageUnit: 'years', sex: 'M', name: '', weightText: '', heightText: '', ageText: '' },
+        installAvailable: false
       };
       this.CATEGORIES = CATEGORIES;
       this.CALCS = CALCS;
@@ -64,6 +65,13 @@
         this.setState(s => ({ inputsByCalc: { ...s.inputsByCalc, [calcId]: { ...s.inputsByCalc[calcId], [key]: val } } }));
       }
     
+      // The actual `beforeinstallprompt` event/deferred prompt is a browser
+      // API concern owned by index.html (not app state); it flips this flag
+      // on/off and wires requestInstall() to actually show the browser's
+      // install dialog via props.onInstallRequest.
+      setInstallAvailable(v) { this.setState({ installAvailable: v }); }
+      requestInstall() { if (this.props.onInstallRequest) this.props.onInstallRequest(); }
+
       goHome() { this.setState({ screen: 'home', tab: 'home' }); }
       goSaved() { this.setState({ screen: 'saved', tab: 'saved' }); }
       goPatient() { this.setState({ screen: 'patient', tab: 'patient' }); }
@@ -372,6 +380,7 @@
           patientChipLabel, patientView,
           categoryView: this.getCategoryView(), calcView: this.getCurrentCalcView(),
           savedView, hasSavedList: savedView.length > 0, hasNoSavedList: savedView.length === 0,
+          installAvailable: this.state.installAvailable, onInstall: () => this.requestInstall(),
           goHome: () => this.goHome(), goSaved: () => this.goSaved(), goPatient: () => this.goPatient(),
           tabHomeColor: tab === 'home' ? 'var(--color-accent-700)' : 'var(--color-neutral-700)',
           tabSavedColor: tab === 'saved' ? 'var(--color-accent-700)' : 'var(--color-neutral-700)',

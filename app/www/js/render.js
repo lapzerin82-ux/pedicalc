@@ -61,7 +61,8 @@
     bookmarkFilled: 'M6 3.5h12v17l-6-4-6 4z',
     mail: 'M2.5 4.5h19v15h-19z M3 6l9 6.5L21 6',
     home: 'M4 11.5 12 4l8 7.5 M6 10.5V20a1 1 0 0 0 1 1h4v-6h2v6h4a1 1 0 0 0 1-1v-9.5',
-    close: 'M18 6 6 18 M6 6l12 12'
+    close: 'M18 6 6 18 M6 6l12 12',
+    install: 'M12 3v12 M7.5 10.5 12 15l4.5-4.5 M5 21h14'
   };
 
   function bookmarkIcon(filled, size) {
@@ -151,14 +152,20 @@
   // ---- screens --------------------------------------------------------------
 
   function homeScreen(vm) {
-    const banner = el('div', { class: 'home-banner' }, [
-      el('div', { class: 'brand-row' }, [
-        el('div', { class: 'brand-mark' }, ['Rx']),
-        el('div', {}, [
-          el('div', { class: 'nav-brand', style: 'font-size:22px;margin-bottom:2px' }, ['PediCalc']),
-          el('p', { class: 'home-disclaimer' }, ['Clinical reference only — verify against institutional protocol.'])
-        ])
+    const brandRowKids = [
+      el('div', { class: 'brand-mark' }, ['Rx']),
+      el('div', { style: 'flex:1;min-width:0' }, [
+        el('div', { class: 'nav-brand', style: 'font-size:22px;margin-bottom:2px' }, ['PediCalc']),
+        el('p', { class: 'home-disclaimer' }, ['Clinical reference only — verify against institutional protocol.'])
       ])
+    ];
+    if (vm.installAvailable) {
+      brandRowKids.push(el('button', { class: 'install-btn', onclick: vm.onInstall, 'aria-label': 'Install app' }, [
+        icon(ICONS.install, { size: 19 })
+      ]));
+    }
+    const banner = el('div', { class: 'home-banner' }, [
+      el('div', { class: 'brand-row' }, brandRowKids)
     ]);
 
     const kids = [];
