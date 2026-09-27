@@ -479,9 +479,9 @@ const CALCS = [
           if (d.mgPerKg !== undefined) { perDose = d.mgPerKg * w; if (d.maxDose && perDose > d.maxDose) { perDose = d.maxDose; capped = true; } }
           else { let daily = d.mgPerKgDay * w; if (d.maxDaily && daily > d.maxDaily) { daily = d.maxDaily; capped = true; } perDose = daily / d.dividedBy; }
           const mgPerKgUsed = perDose / w;
-          const volumeMl = perDose / conc; const mlPerKg = volumeMl / w;
+          const volumeMl = perDose / conc;
           return {
-            value: mgPerKgUsed.toFixed(2), unit: 'mg/kg/dose · ' + mlPerKg.toFixed(2) + ' mL/kg', label: d.name + ' — ' + d.route,
+            value: mgPerKgUsed.toFixed(2), unit: 'mg/kg/dose · ' + volumeMl.toFixed(2) + ' mL/dose', label: d.name + ' — ' + d.route,
             interpretation: null,
             action: null,
             caution: capped ? 'Weight-based dose exceeded the standard ceiling and was capped at the maximum recommended dose.' : null,
