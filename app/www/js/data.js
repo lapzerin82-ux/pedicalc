@@ -481,12 +481,10 @@ const CALCS = [
           const mgPerKgUsed = perDose / w;
           const volumeMl = perDose / conc; const mlPerKg = volumeMl / w;
           return {
-            value: perDose.toFixed(1), unit: 'mg (' + mgPerKgUsed.toFixed(2) + ' mg/kg/dose · ' + volumeMl.toFixed(1) + ' mL · ' + mlPerKg.toFixed(2) + ' mL/kg)', label: d.name + ' — single dose (' + d.route + ')',
-            interpretation: (capped ? 'Weight-based dose exceeded the standard ceiling and was capped at the maximum recommended dose. ' : '') + 'Reference dosing: ' + d.doseText + '.',
-            action: 'Give ' + perDose.toFixed(1) + ' mg (' + mgPerKgUsed.toFixed(2) + ' mg/kg; ≈' + volumeMl.toFixed(1) + ' mL, ' + mlPerKg.toFixed(2) + ' mL/kg at ' + conc + ' mg/mL) ' + d.route + ' ' + d.freq + '.',
-            caution: 'Confirm the dispensed formulation strength before administration. '
-              + (d.maxDaily ? 'Do not exceed ' + d.maxDaily + ' mg/day. ' : 'No fixed daily maximum is listed for this entry — titrate to response, serum levels where applicable, and local protocol. ')
-              + 'Verify allergies, renal/hepatic function, and institutional formulary.',
+            value: mgPerKgUsed.toFixed(2), unit: 'mg/kg/dose · ' + mlPerKg.toFixed(2) + ' mL/kg', label: d.name + ' — ' + d.route,
+            interpretation: null,
+            action: null,
+            caution: capped ? 'Weight-based dose exceeded the standard ceiling and was capped at the maximum recommended dose.' : null,
             reference: srcFor(d)
           };
         }

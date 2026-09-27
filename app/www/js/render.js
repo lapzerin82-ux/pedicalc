@@ -386,14 +386,18 @@
         ]),
         el('div', { class: 'text-muted', style: 'font-size:13px' }, [cv.result.label])
       ]));
-      body.push(el('div', { class: 'card', style: 'margin-bottom:12px' }, [
-        el('div', { class: 'card-kicker' }, ['Clinical interpretation']),
-        el('p', { class: 'card-body', style: 'white-space:pre-line' }, [cv.result.interpretation])
-      ]));
-      body.push(el('div', { class: 'card', style: 'margin-bottom:12px' }, [
-        el('div', { class: 'card-kicker' }, ['Recommended action']),
-        el('p', { class: 'card-body' }, [cv.result.action])
-      ]));
+      if (cv.result.interpretation) {
+        body.push(el('div', { class: 'card', style: 'margin-bottom:12px' }, [
+          el('div', { class: 'card-kicker' }, ['Clinical interpretation']),
+          el('p', { class: 'card-body', style: 'white-space:pre-line' }, [cv.result.interpretation])
+        ]));
+      }
+      if (cv.result.action) {
+        body.push(el('div', { class: 'card', style: 'margin-bottom:12px' }, [
+          el('div', { class: 'card-kicker' }, ['Recommended action']),
+          el('p', { class: 'card-body' }, [cv.result.action])
+        ]));
+      }
       if (cv.result.caution) {
         body.push(el('div', { class: 'card caution-card' }, [
           warningIcon(18, 'muted-icon'),
