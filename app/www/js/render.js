@@ -62,7 +62,8 @@
     mail: 'M2.5 4.5h19v15h-19z M3 6l9 6.5L21 6',
     home: 'M4 11.5 12 4l8 7.5 M6 10.5V20a1 1 0 0 0 1 1h4v-6h2v6h4a1 1 0 0 0 1-1v-9.5',
     close: 'M18 6 6 18 M6 6l12 12',
-    install: 'M12 3v12 M7.5 10.5 12 15l4.5-4.5 M5 21h14'
+    install: 'M12 3v12 M7.5 10.5 12 15l4.5-4.5 M5 21h14',
+    edit: 'M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z M13.5 8l3 3'
   };
 
   function bookmarkIcon(filled, size) {
@@ -456,7 +457,10 @@
         el('label', {}, ['Route of administration']),
         el('input', { class: 'input', value: cmv.route, placeholder: 'e.g. PO, IV, IM, SC', focusKey: 'custom-med-route', oninput: cmv.onRoute })
       ]),
-      el('button', { class: 'btn btn-primary btn-block', disabled: !cmv.canAdd, onclick: cmv.onAdd }, ['Add medication'])
+      el('div', { style: 'display:flex;gap:8px' }, [
+        el('button', { class: 'btn btn-primary btn-block', style: 'flex:1', disabled: !cmv.canAdd, onclick: cmv.onAdd }, [cmv.submitLabel]),
+        cmv.isEditing ? el('button', { class: 'btn btn-secondary', type: 'button', onclick: cmv.onCancelEdit }, ['Cancel']) : null
+      ])
     ]);
 
     const body = [header, form];
@@ -465,12 +469,13 @@
       body.push(el('div', { class: 'card-kicker', style: 'margin-bottom:8px' }, ['Your added medications']));
       const list = el('div', { class: 'calc-list' });
       cmv.items.forEach(function (it) {
-        list.appendChild(el('div', { class: 'card', style: 'margin-bottom:10px' }, [
+        list.appendChild(el('div', { class: 'card' + (it.isBeingEdited ? ' custom-med-editing' : ''), style: 'margin-bottom:10px' }, [
           el('div', { style: 'display:flex;align-items:flex-start;gap:8px' }, [
             el('div', { style: 'flex:1;min-width:0' }, [
               el('div', { class: 'card-title', style: 'font-size:15px' }, [it.name]),
               el('p', { class: 'card-body', style: 'margin-top:4px' }, [it.summary])
             ]),
+            el('button', { class: 'field-clear-btn', type: 'button', 'aria-label': 'Edit ' + it.name, onclick: it.onEdit }, [icon(ICONS.edit, { size: 15 })]),
             el('button', { class: 'field-clear-btn', type: 'button', 'aria-label': 'Remove ' + it.name, onclick: it.onRemove }, [icon(ICONS.close, { size: 16 })])
           ])
         ]));

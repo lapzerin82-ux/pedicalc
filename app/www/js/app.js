@@ -30,7 +30,7 @@
         search: '', drugFilter: '', inputsByCalc: {}, saved: [], ack: {},
         patient: { weightKg: null, heightCm: null, ageValue: null, ageUnit: 'years', sex: 'M', name: '', weightText: '', heightText: '', ageText: '' },
         installAvailable: false,
-        customDrugs: [], customMedForm: { name: '', form: '', dose: '', frequency: '', route: '' }
+        customDrugs: [], customMedForm: { name: '', form: '', dose: '', frequency: '', route: '' }, customMedEditingId: null
       };
       this.CATEGORIES = CATEGORIES;
       this.CALCS = CALCS;
@@ -118,21 +118,19 @@
       // there and computes mg/kg/dose (+ mL/dose, if the strength parses)
       // through the exact same calculated-mode path as a BNFC-sourced drug.
       goCustomMeds() { this.setState({ screen: 'custom-meds' }); }
-      backFromCustomMeds() { this.setState({ screen: 'calc' }); }
+      backFromCustomMeds() {
+        this.setState({ screen: 'calc', customMedEditingId: null, customMedForm: { name: '', form: '', dose: '', frequency: '', route: '' } });
+      }
       updateCustomMedField(key, val) {
         this.setState(s => ({ customMedForm: { ...s.customMedForm, [key]: val } }));
       }
-      addCustomMed() {
-        const f = this.state.customMedForm;
+      _buildCustomDrug(id, f) {
         const name = f.name.trim();
-        const doseText = f.dose.trim();
-        const mgPerKg = Number(doseText);
-        if (!name || !doseText || isNaN(mgPerKg) || mgPerKg <= 0) return;
         const form = f.form.trim(), frequency = f.frequency.trim(), route = f.route.trim();
+        const mgPerKg = Number(f.dose.trim());
         const conc = parseStrengthConcentration(form);
-        const drug = {
-          id: 'custom-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-          name: name, group: 'Custom (added by you)',
+        return {
+          id: id, name: name, group: 'Custom (added by you)',
           mgPerKg: mgPerKg, freq: frequency || 'as directed', route: route || '—',
           doseText: mgPerKg + ' mg/kg/dose' + (frequency ? ', ' + frequency : '') + (route ? ' (' + route + ')' : ''),
           strengths: conc != null ? [{ value: conc, label: form }] : [],
@@ -141,18 +139,55 @@
           source: 'User-entered (manual custom medication).',
           isCustom: true
         };
-        const nextCustomDrugs = [...this.state.customDrugs, drug];
+      }
+      // Add or, when customMedEditingId is set (see editCustomMed), save an
+      // in-place edit — keeping the same id so it stays the same entry
+      // wherever it's already selected (search results, an open calc screen).
+      saveCustomMed() {
+        const f = this.state.customMedForm;
+        const name = f.name.trim();
+        const doseText = f.dose.trim();
+        const mgPerKg = Number(doseText);
+        if (!name || !doseText || isNaN(mgPerKg) || mgPerKg <= 0) return;
+        const editingId = this.state.customMedEditingId;
+        const drug = this._buildCustomDrug(editingId || ('custom-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)), f);
+        const nextCustomDrugs = editingId
+          ? this.state.customDrugs.map(d => d.id === editingId ? drug : d)
+          : [...this.state.customDrugs, drug];
         this._syncCustomDrugsIntoCalc(nextCustomDrugs);
-        this.setState({ customDrugs: nextCustomDrugs, customMedForm: { name: '', form: '', dose: '', frequency: '', route: '' } });
+        this.setState({ customDrugs: nextCustomDrugs, customMedEditingId: null, customMedForm: { name: '', form: '', dose: '', frequency: '', route: '' } });
+      }
+      editCustomMed(id) {
+        const d = this.state.customDrugs.find(x => x.id === id);
+        if (!d) return;
+        this.setState({
+          customMedEditingId: id,
+          customMedForm: {
+            name: d.name,
+            form: (d.strengths && d.strengths[0]) ? d.strengths[0].label : '',
+            dose: String(d.mgPerKg),
+            frequency: d.freq === 'as directed' ? '' : d.freq,
+            route: d.route === '—' ? '' : d.route
+          }
+        });
+      }
+      cancelEditCustomMed() {
+        this.setState({ customMedEditingId: null, customMedForm: { name: '', form: '', dose: '', frequency: '', route: '' } });
       }
       removeCustomMed(id) {
         const nextCustomDrugs = this.state.customDrugs.filter(d => d.id !== id);
         this._syncCustomDrugsIntoCalc(nextCustomDrugs);
-        this.setState({ customDrugs: nextCustomDrugs });
+        const patch = { customDrugs: nextCustomDrugs };
+        if (this.state.customMedEditingId === id) {
+          patch.customMedEditingId = null;
+          patch.customMedForm = { name: '', form: '', dose: '', frequency: '', route: '' };
+        }
+        this.setState(patch);
       }
       getCustomMedsView() {
         const f = this.state.customMedForm;
         const doseNum = Number(f.dose);
+        const editingId = this.state.customMedEditingId;
         return {
           name: f.name, form: f.form, dose: f.dose, frequency: f.frequency, route: f.route,
           onName: (e) => this.updateCustomMedField('name', e.target.value),
@@ -160,12 +195,17 @@
           onDose: (e) => this.updateCustomMedField('dose', e.target.value),
           onFrequency: (e) => this.updateCustomMedField('frequency', e.target.value),
           onRoute: (e) => this.updateCustomMedField('route', e.target.value),
-          onAdd: () => this.addCustomMed(),
+          onAdd: () => this.saveCustomMed(),
           canAdd: f.name.trim().length > 0 && f.dose.trim().length > 0 && !isNaN(doseNum) && doseNum > 0,
+          isEditing: !!editingId,
+          submitLabel: editingId ? 'Save changes' : 'Add medication',
+          onCancelEdit: () => this.cancelEditCustomMed(),
           items: this.state.customDrugs.map(d => ({
             id: d.id, name: d.name,
             summary: d.mgPerKg + ' mg/kg/dose' + (d.freq ? ', ' + d.freq : '') + (d.route && d.route !== '—' ? ' — ' + d.route : '')
               + (d.strengths && d.strengths[0] ? ' (' + d.strengths[0].label + ')' : ''),
+            isBeingEdited: d.id === editingId,
+            onEdit: () => this.editCustomMed(d.id),
             onRemove: () => this.removeCustomMed(d.id)
           })),
           hasItems: this.state.customDrugs.length > 0,

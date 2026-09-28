@@ -173,6 +173,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
   padding: var(--space-3); border-radius: var(--radius-md);
   background: #fff; border: none; box-shadow: var(--shadow-sm);
 }
+.custom-med-editing { border: 1.5px solid var(--color-accent-500); }
 .card-kicker { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-accent-700); font-weight: 800; }
 .card-title { font-family: var(--font-heading); font-weight: 700; font-size: 16.5px; line-height: 1.25; }
 .card-body { margin: 0; font-size: 13px; opacity: .85; flex: 1; line-height: 1.5; }
