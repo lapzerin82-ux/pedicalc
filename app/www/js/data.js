@@ -721,28 +721,64 @@ const CALCS = [
       },
       { id: 'neonatal-bilirubin', name: 'Neonatal bilirubin assessment', categoryId: 'neonatal', flagship: false,
         fields: [
+          { key: 'gaWeeks', label: 'Gestational age (completed weeks)', type: 'number', default: 38, step: 1 },
           { key: 'ageHours', label: 'Age (hours)', type: 'number', default: 48, step: 1 },
           { key: 'tsb', label: 'Total serum bilirubin (mg/dL)', type: 'number', default: 12, step: 0.1 },
-          { key: 'risk', label: 'Risk category', type: 'seg', default: 'medium', options: [ { value: 'lower', label: 'Lower risk' }, { value: 'medium', label: 'Medium risk' }, { value: 'higher', label: 'Higher risk' } ] }
+          { key: 'riskFactors', label: 'Neurotoxicity risk factor(s)', type: 'seg', default: 'no', options: [ { value: 'no', label: 'None' }, { value: 'yes', label: '≥1 present' } ] }
         ],
+        // Hour-specific thresholds digitized (~12h resolution, ~±0.5–1 mg/dL
+        // reading precision) from the AAP 2022 guideline's own phototherapy
+        // figures (Kemper AR et al., Pediatrics 2022;150:e2022058859, as
+        // reproduced via UpToDate) — the two curve sets the user supplied
+        // directly. Each array is [hour, threshold mg/dL]; compute()
+        // linearly interpolates between anchors and holds the last value
+        // flat beyond 336h (14 days), matching how the source charts end.
         compute: (v) => {
-          const anchors = {
-            lower: [[24, 10], [48, 13], [72, 15], [96, 18]],
-            medium: [[24, 8], [48, 11], [72, 13.5], [96, 15]],
-            higher: [[24, 6], [48, 9], [72, 11], [96, 13]]
-          }[v.risk];
-          let h = Math.max(24, Math.min(96, v.ageHours)); let threshold = anchors[anchors.length - 1][1];
-          for (let i = 0; i < anchors.length - 1; i++) {
-            const [h1, t1] = anchors[i]; const [h2, t2] = anchors[i + 1];
-            if (h >= h1 && h <= h2) { threshold = t1 + (t2 - t1) * (h - h1) / (h2 - h1); break; }
+          const RISK_TABLES = {
+            yes: {
+              38: [[0, 6], [12, 9], [24, 11.3], [36, 13.2], [48, 14.7], [60, 16], [72, 17], [84, 17.7], [96, 18.2], [336, 18.3]],
+              37: [[0, 6], [12, 8.7], [24, 11], [36, 12.8], [48, 14.3], [60, 15.6], [72, 16.6], [84, 17.3], [96, 17.9], [336, 18.1]],
+              36: [[0, 5.7], [12, 8.3], [24, 10.5], [36, 12.2], [48, 13.6], [60, 14.8], [72, 15.8], [84, 16.5], [96, 17], [336, 18.3]],
+              35: [[0, 5.5], [12, 7.7], [24, 9.7], [36, 11.3], [48, 12.6], [60, 13.8], [72, 14.8], [84, 15.5], [96, 16.1], [336, 17.3]]
+            },
+            no: {
+              40: [[0, 9], [12, 12.5], [24, 15], [36, 17], [48, 18.6], [60, 19.8], [72, 20.7], [84, 21.3], [96, 21.7], [336, 22]],
+              39: [[0, 8.8], [12, 12.2], [24, 14.7], [36, 16.7], [48, 18.3], [60, 19.5], [72, 20.4], [84, 21], [96, 21.4], [336, 21.6]],
+              38: [[0, 8.5], [12, 11.8], [24, 14.2], [36, 16.1], [48, 17.6], [60, 18.8], [72, 19.6], [84, 20.2], [96, 20.6], [336, 21.2]],
+              37: [[0, 8.2], [12, 11.3], [24, 13.6], [36, 15.4], [48, 16.9], [60, 18], [72, 18.8], [84, 19.4], [96, 19.8], [336, 20.4]],
+              36: [[0, 7.8], [12, 10.7], [24, 12.9], [36, 14.6], [48, 16], [60, 17], [72, 17.8], [84, 18.3], [96, 18.6], [336, 19.7]],
+              35: [[0, 7.3], [12, 10], [24, 12], [36, 13.6], [48, 14.9], [60, 15.9], [72, 16.6], [84, 17.1], [96, 17.4], [336, 19.2]]
+            }
+          };
+          const riskKey = v.riskFactors === 'yes' ? 'yes' : 'no';
+          const table = RISK_TABLES[riskKey];
+          const minGA = 35, maxGA = riskKey === 'yes' ? 38 : 40;
+          const gaInput = Math.floor(v.gaWeeks);
+          const gaUsed = Math.max(minGA, Math.min(maxGA, gaInput));
+          const anchors = table[gaUsed];
+          const h = Math.max(0, v.ageHours);
+          let threshold = anchors[anchors.length - 1][1];
+          if (h <= anchors[0][0]) threshold = anchors[0][1];
+          else {
+            for (let i = 0; i < anchors.length - 1; i++) {
+              const [h1, t1] = anchors[i]; const [h2, t2] = anchors[i + 1];
+              if (h >= h1 && h <= h2) { threshold = t1 + (t2 - t1) * (h - h1) / (h2 - h1); break; }
+            }
           }
           const above = v.tsb >= threshold;
+          const approaching = !above && v.tsb >= threshold - 1.5;
+          const outOfRange = gaInput !== gaUsed;
           return {
-            value: threshold.toFixed(1), unit: 'mg/dL', label: 'Approx. phototherapy threshold',
-            interpretation: above ? 'TSB is at or above the estimated phototherapy threshold for this risk category and age.' : (v.tsb >= threshold - 2 ? 'TSB is approaching the threshold — close monitoring warranted.' : 'TSB is comfortably below the estimated threshold.'),
-            action: above ? 'Initiate phototherapy per unit protocol; recheck TSB in 4–6 hours.' : 'Continue routine monitoring; recheck per standard newborn bilirubin screening schedule.',
-            caution: 'This is a simplified screening estimate. Use the full AAP Bhutani-based hour-specific nomogram, incorporating gestational age and hemolytic risk factors, for actual clinical decisions.',
-            reference: 'AAP Clinical Practice Guideline: Hyperbilirubinemia in the Newborn (2004; updated 2022).'
+            value: threshold.toFixed(1), unit: 'mg/dL',
+            label: 'Phototherapy threshold — ' + gaUsed + 'wk, ' + (riskKey === 'yes' ? '≥1 risk factor' : 'no risk factors') + ', ' + Math.round(h) + 'h',
+            interpretation: (gaInput < minGA ? 'This nomogram applies to infants ≥35 weeks gestation — for <35 weeks, use neonatology/specialist guidance instead; the value below is extrapolated from the 35-week curve and may not be appropriate. ' : '')
+              + (above ? 'TSB is at or above the phototherapy threshold for this gestational age, age, and risk-factor status.'
+                : approaching ? 'TSB is within 1.5 mg/dL of the threshold — reassess soon and consider a repeat TSB/TcB per unit protocol.'
+                : 'TSB is below the phototherapy threshold for this gestational age, age, and risk-factor status.')
+              + (outOfRange && gaInput >= minGA ? (' Using the ' + gaUsed + '-week curve (chart tops out at ≥' + maxGA + ' weeks for this risk-factor status).') : ''),
+            action: above ? 'Initiate phototherapy per unit protocol; recheck TSB per protocol (typically within 4–24 hours depending on trajectory and risk factors).' : 'Continue routine monitoring; repeat TSB/TcB per standard newborn bilirubin screening schedule and risk trajectory.',
+            caution: 'Thresholds are digitized from the AAP 2022 hour-specific phototherapy figures at roughly 12-hour resolution — treat as approximate (±~0.5–1 mg/dL) and confirm against the official chart/AAP BiliTool before any clinical decision, especially when TSB is close to the threshold. Neurotoxicity risk factors include isoimmune or other hemolytic disease, G6PD deficiency, birth asphyxia, sepsis, acidosis, albumin <3.0 g/dL, significant lethargy, and temperature instability. Do not subtract direct/conjugated bilirubin from TSB before comparing to the threshold. This gives the phototherapy threshold only — it does NOT provide exchange-transfusion or escalation-of-care thresholds, which are separate, higher curves.',
+            reference: 'AAP Clinical Practice Guideline (Kemper AR et al., Pediatrics 2022;150:e2022058859); figures as reproduced via UpToDate, © 2022 AAP.'
           };
         }
       }
