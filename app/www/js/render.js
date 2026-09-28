@@ -463,7 +463,21 @@
       ])
     ]);
 
-    const body = [header, form];
+    const importInputId = 'custom-med-import-input';
+    const backupCard = el('div', { class: 'card', style: 'margin-bottom:14px' }, [
+      el('div', { class: 'card-kicker' }, ['Backup']),
+      el('p', { class: 'card-body', style: 'margin:2px 0 10px' }, ['These medications are saved on this device. An app update keeps them, but a full uninstall (or a new device) might not, depending on your phone\'s backup settings — export a backup file any time, and import it to restore everything.']),
+      el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, [
+        el('button', { class: 'btn btn-secondary', type: 'button', onclick: cmv.onExport }, ['Export backup file']),
+        el('label', { class: 'btn btn-secondary', for: importInputId, style: 'cursor:pointer' }, [
+          'Import backup file',
+          el('input', { id: importInputId, type: 'file', accept: 'application/json,.json', style: 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none', onchange: cmv.onImportFile })
+        ])
+      ]),
+      cmv.importMessage ? el('p', { class: 'card-body', style: 'margin:10px 0 0;font-weight:700;color:' + (cmv.importMessage.type === 'error' ? 'var(--color-caution)' : 'var(--color-accent-700)') }, [cmv.importMessage.text]) : null
+    ]);
+
+    const body = [header, form, backupCard];
 
     if (cmv.hasItems) {
       body.push(el('div', { class: 'card-kicker', style: 'margin-bottom:8px' }, ['Your added medications']));

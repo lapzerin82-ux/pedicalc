@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pre-Android-12 Auto Backup rules. "root" covers the whole app data
+  directory (not just getFilesDir()), which is required to reach
+  app_webview/ — that's where the WebView stores localStorage, and
+  localStorage is where PediCalc keeps saved patients/custom medications.
+-->
+<full-backup-content>
+    <include domain="root" path="app_webview/" />
+</full-backup-content>

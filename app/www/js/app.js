@@ -30,7 +30,8 @@
         search: '', drugFilter: '', inputsByCalc: {}, saved: [], ack: {},
         patient: { weightKg: null, heightCm: null, ageValue: null, ageUnit: 'years', sex: 'M', name: '', weightText: '', heightText: '', ageText: '' },
         installAvailable: false,
-        customDrugs: [], customMedForm: { name: '', form: '', dose: '', frequency: '', route: '' }, customMedEditingId: null
+        customDrugs: [], customMedForm: { name: '', form: '', dose: '', frequency: '', route: '' }, customMedEditingId: null,
+        customMedImportMessage: null
       };
       this.CATEGORIES = CATEGORIES;
       this.CALCS = CALCS;
@@ -184,6 +185,58 @@
         }
         this.setState(patch);
       }
+      // Custom medications live in this device's localStorage, which an app
+      // update never touches — but a full uninstall (or moving to a new
+      // device) can still clear it depending on the OS/browser's own backup
+      // settings, which this app has no control over. Export/Import gives a
+      // reliable, user-controlled way to carry the list across that gap
+      // regardless of platform or backup settings.
+      exportCustomMeds() {
+        const data = JSON.stringify(this.state.customDrugs, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'pedicalc-custom-medications.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      importCustomMedsFromFile(file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          let parsed;
+          try { parsed = JSON.parse(reader.result); } catch (e) {
+            this.setState({ customMedImportMessage: { type: 'error', text: "That file isn't valid JSON." } });
+            return;
+          }
+          if (!Array.isArray(parsed)) {
+            this.setState({ customMedImportMessage: { type: 'error', text: 'Expected a list of medications (from a previous Export).' } });
+            return;
+          }
+          const valid = parsed.filter(d => d && typeof d.name === 'string' && d.name.trim() && typeof d.mgPerKg === 'number' && d.mgPerKg > 0);
+          if (!valid.length) {
+            this.setState({ customMedImportMessage: { type: 'error', text: 'No valid medications found in that file.' } });
+            return;
+          }
+          // Match by id first (a re-import of the same export), else by
+          // name (so importing an updated backup overwrites, not duplicates,
+          // an entry you already have).
+          const nextCustomDrugs = this.state.customDrugs.slice();
+          valid.forEach(d => {
+            const idx = nextCustomDrugs.findIndex(x => x.id === d.id || x.name.toLowerCase() === d.name.trim().toLowerCase());
+            const entry = Object.assign({}, d, { isCustom: true, group: d.group || 'Custom (added by you)' });
+            if (idx >= 0) nextCustomDrugs[idx] = entry; else nextCustomDrugs.push(entry);
+          });
+          this._syncCustomDrugsIntoCalc(nextCustomDrugs);
+          this.setState({
+            customDrugs: nextCustomDrugs,
+            customMedImportMessage: { type: 'success', text: 'Imported ' + valid.length + ' medication' + (valid.length === 1 ? '' : 's') + '.' }
+          });
+        };
+        reader.readAsText(file);
+      }
       getCustomMedsView() {
         const f = this.state.customMedForm;
         const doseNum = Number(f.dose);
@@ -209,6 +262,13 @@
             onRemove: () => this.removeCustomMed(d.id)
           })),
           hasItems: this.state.customDrugs.length > 0,
+          onExport: () => this.exportCustomMeds(),
+          onImportFile: (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (file) this.importCustomMedsFromFile(file);
+            e.target.value = '';
+          },
+          importMessage: this.state.customMedImportMessage,
           back: () => this.backFromCustomMeds()
         };
       }

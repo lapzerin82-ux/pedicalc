@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ backup config. Covers both the cloud-backup path (Google
+  Drive, subject to the device's "Back up to Google Drive" setting and
+  runs on the OS's own schedule, not instantly on uninstall) and the
+  device-transfer path (Android's direct phone-to-phone "Copy your data"
+  flow during setup of a new/reset device, which doesn't depend on any
+  cloud/account setting). Same app_webview/ target as backup_rules.xml.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="root" path="app_webview/" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="root" path="app_webview/" />
+    </device-transfer>
+</data-extraction-rules>
