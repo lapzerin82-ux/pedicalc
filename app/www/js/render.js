@@ -435,14 +435,18 @@
     ]);
 
     const form = el('div', { class: 'card', style: 'margin-bottom:14px' }, [
-      el('p', { class: 'text-muted', style: 'font-size:13px;margin:0 0 12px' }, ['Not in the built-in list? Add it here with its dose, frequency, and route — it will then also show up in the medication search.']),
+      el('p', { class: 'text-muted', style: 'font-size:13px;margin:0 0 12px' }, ['Not in the built-in list? Add it here — it will then also show up in the medication search and compute mg/kg/dose (and mL/dose, if the available form parses) just like a built-in drug.']),
       el('div', { class: 'field', style: 'margin-bottom:12px' }, [
         el('label', {}, ['Medication name']),
         el('input', { class: 'input', value: cmv.name, placeholder: 'e.g. Amoxicillin', focusKey: 'custom-med-name', oninput: cmv.onName })
       ]),
       el('div', { class: 'field', style: 'margin-bottom:12px' }, [
-        el('label', {}, ['Dose']),
-        el('input', { class: 'input', value: cmv.dose, placeholder: 'e.g. 250 mg', focusKey: 'custom-med-dose', oninput: cmv.onDose })
+        el('label', {}, ['Available form']),
+        el('input', { class: 'input', value: cmv.form, placeholder: 'e.g. 125mg/5mL', focusKey: 'custom-med-form', oninput: cmv.onForm })
+      ]),
+      el('div', { class: 'field', style: 'margin-bottom:12px' }, [
+        el('label', {}, ['Dose (mg/kg/dose)']),
+        el('input', { class: 'input', type: 'text', inputmode: 'decimal', value: cmv.dose, placeholder: 'e.g. 15', focusKey: 'custom-med-dose', oninput: cmv.onDose })
       ]),
       el('div', { class: 'field', style: 'margin-bottom:12px' }, [
         el('label', {}, ['Frequency']),
@@ -465,7 +469,7 @@
           el('div', { style: 'display:flex;align-items:flex-start;gap:8px' }, [
             el('div', { style: 'flex:1;min-width:0' }, [
               el('div', { class: 'card-title', style: 'font-size:15px' }, [it.name]),
-              el('p', { class: 'card-body', style: 'margin-top:4px' }, [it.dosePanel])
+              el('p', { class: 'card-body', style: 'margin-top:4px' }, [it.summary])
             ]),
             el('button', { class: 'field-clear-btn', type: 'button', 'aria-label': 'Remove ' + it.name, onclick: it.onRemove }, [icon(ICONS.close, { size: 16 })])
           ])

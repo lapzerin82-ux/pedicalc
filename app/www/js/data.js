@@ -474,17 +474,21 @@ const CALCS = [
               reference: srcFor(d)
             };
           }
-          const conc = Number(v.strength) || 1;
+          const hasStrength = d.strengths && d.strengths.length > 0;
+          const conc = hasStrength ? (Number(v.strength) || 1) : null;
           let perDose, capped = false;
           if (d.mgPerKg !== undefined) { perDose = d.mgPerKg * w; if (d.maxDose && perDose > d.maxDose) { perDose = d.maxDose; capped = true; } }
           else { let daily = d.mgPerKgDay * w; if (d.maxDaily && daily > d.maxDaily) { daily = d.maxDaily; capped = true; } perDose = daily / d.dividedBy; }
           const mgPerKgUsed = perDose / w;
-          const volumeMl = perDose / conc;
+          const volumeMl = conc != null ? perDose / conc : null;
+          const cautionParts = [];
+          if (capped) cautionParts.push('Weight-based dose exceeded the standard ceiling and was capped at the maximum recommended dose.');
+          if (d.cautionText) cautionParts.push(d.cautionText);
           return {
-            value: mgPerKgUsed.toFixed(2), unit: 'mg/kg/dose · ' + volumeMl.toFixed(2) + ' mL/dose', label: d.name + ' — ' + d.route + ' · ' + d.freq,
+            value: mgPerKgUsed.toFixed(2), unit: 'mg/kg/dose' + (volumeMl != null ? ' · ' + volumeMl.toFixed(2) + ' mL/dose' : ''), label: d.name + ' — ' + d.route + ' · ' + d.freq,
             interpretation: null,
             action: null,
-            caution: capped ? 'Weight-based dose exceeded the standard ceiling and was capped at the maximum recommended dose.' : null,
+            caution: cautionParts.length ? cautionParts.join(' ') : null,
             reference: srcFor(d)
           };
         }

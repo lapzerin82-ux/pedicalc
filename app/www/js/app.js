@@ -4,6 +4,23 @@
 (function () {
   const { CATEGORIES, CALCS } = window.PEDICALC_DATA;
 
+  // Parses an "available form" strength string like "125mg/5mL", "100mg/mL",
+  // or "1g/10mL" into a concentration in mg/mL (matching what a drug's own
+  // `strengths[].value` holds). Returns null if the text doesn't match a
+  // recognisable strength format, so the caller can skip showing a mL/dose
+  // figure rather than silently computing one from a guessed concentration.
+  function parseStrengthConcentration(text) {
+    const m = String(text || '').trim().match(/^([\d.]+)\s*(mcg|micrograms?|mg|g)\s*\/\s*([\d.]*)\s*m?l$/i);
+    if (!m) return null;
+    const amount = parseFloat(m[1]);
+    if (!amount || isNaN(amount)) return null;
+    const unit = m[2].toLowerCase();
+    const ml = m[3] ? parseFloat(m[3]) : 1;
+    if (!ml) return null;
+    const mg = unit === 'g' ? amount * 1000 : (unit.indexOf('mcg') === 0 || unit.indexOf('microgram') === 0 ? amount / 1000 : amount);
+    return mg / ml;
+  }
+
   class PediCalcApp {
     constructor(props) {
       this.props = props || {};
@@ -13,7 +30,7 @@
         search: '', drugFilter: '', inputsByCalc: {}, saved: [], ack: {},
         patient: { weightKg: null, heightCm: null, ageValue: null, ageUnit: 'years', sex: 'M', name: '', weightText: '', heightText: '', ageText: '' },
         installAvailable: false,
-        customDrugs: [], customMedForm: { name: '', dose: '', frequency: '', route: '' }
+        customDrugs: [], customMedForm: { name: '', form: '', dose: '', frequency: '', route: '' }
       };
       this.CATEGORIES = CATEGORIES;
       this.CALCS = CALCS;
@@ -98,8 +115,8 @@
       // Custom (manually-entered) medications: a simple add/remove list that
       // also mirrors into the drug-dosing calculator's own drug list (see
       // _syncCustomDrugsIntoCalc), so a custom entry is searchable/selectable
-      // there and displays its dose/frequency/route via the normal
-      // reference-mode dose panel, just like a BNFC-sourced entry.
+      // there and computes mg/kg/dose (+ mL/dose, if the strength parses)
+      // through the exact same calculated-mode path as a BNFC-sourced drug.
       goCustomMeds() { this.setState({ screen: 'custom-meds' }); }
       backFromCustomMeds() { this.setState({ screen: 'calc' }); }
       updateCustomMedField(key, val) {
@@ -108,23 +125,25 @@
       addCustomMed() {
         const f = this.state.customMedForm;
         const name = f.name.trim();
-        if (!name) return;
-        const dose = f.dose.trim(), frequency = f.frequency.trim(), route = f.route.trim();
-        const panelParts = [];
-        if (dose) panelParts.push('Dose: ' + dose + '.');
-        if (frequency) panelParts.push('Frequency: ' + frequency + '.');
-        if (route) panelParts.push('Route: ' + route + '.');
+        const doseText = f.dose.trim();
+        const mgPerKg = Number(doseText);
+        if (!name || !doseText || isNaN(mgPerKg) || mgPerKg <= 0) return;
+        const form = f.form.trim(), frequency = f.frequency.trim(), route = f.route.trim();
+        const conc = parseStrengthConcentration(form);
         const drug = {
           id: 'custom-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-          name: name, group: 'Custom (added by you)', mode: 'reference', route: route || '—',
-          dosePanel: panelParts.length ? panelParts.join(' ') : 'No dose/frequency/route entered.',
-          cautionText: 'Manually entered by you — not sourced from BNF for Children. Verify dose, frequency, and route independently before use.',
+          name: name, group: 'Custom (added by you)',
+          mgPerKg: mgPerKg, freq: frequency || 'as directed', route: route || '—',
+          doseText: mgPerKg + ' mg/kg/dose' + (frequency ? ', ' + frequency : '') + (route ? ' (' + route + ')' : ''),
+          strengths: conc != null ? [{ value: conc, label: form }] : [],
+          cautionText: 'Manually entered by you — not sourced from BNF for Children. Verify dose, frequency, route, and formulation strength independently before use.'
+            + (form && conc == null ? ' The available form entered ("' + form + '") could not be read as a concentration (expected e.g. "125mg/5mL"), so only mg/kg/dose is shown, not mL/dose.' : ''),
           source: 'User-entered (manual custom medication).',
-          isCustom: true, strengths: []
+          isCustom: true
         };
         const nextCustomDrugs = [...this.state.customDrugs, drug];
         this._syncCustomDrugsIntoCalc(nextCustomDrugs);
-        this.setState({ customDrugs: nextCustomDrugs, customMedForm: { name: '', dose: '', frequency: '', route: '' } });
+        this.setState({ customDrugs: nextCustomDrugs, customMedForm: { name: '', form: '', dose: '', frequency: '', route: '' } });
       }
       removeCustomMed(id) {
         const nextCustomDrugs = this.state.customDrugs.filter(d => d.id !== id);
@@ -133,15 +152,22 @@
       }
       getCustomMedsView() {
         const f = this.state.customMedForm;
+        const doseNum = Number(f.dose);
         return {
-          name: f.name, dose: f.dose, frequency: f.frequency, route: f.route,
+          name: f.name, form: f.form, dose: f.dose, frequency: f.frequency, route: f.route,
           onName: (e) => this.updateCustomMedField('name', e.target.value),
+          onForm: (e) => this.updateCustomMedField('form', e.target.value),
           onDose: (e) => this.updateCustomMedField('dose', e.target.value),
           onFrequency: (e) => this.updateCustomMedField('frequency', e.target.value),
           onRoute: (e) => this.updateCustomMedField('route', e.target.value),
           onAdd: () => this.addCustomMed(),
-          canAdd: f.name.trim().length > 0,
-          items: this.state.customDrugs.map(d => ({ id: d.id, name: d.name, dosePanel: d.dosePanel, onRemove: () => this.removeCustomMed(d.id) })),
+          canAdd: f.name.trim().length > 0 && f.dose.trim().length > 0 && !isNaN(doseNum) && doseNum > 0,
+          items: this.state.customDrugs.map(d => ({
+            id: d.id, name: d.name,
+            summary: d.mgPerKg + ' mg/kg/dose' + (d.freq ? ', ' + d.freq : '') + (d.route && d.route !== '—' ? ' — ' + d.route : '')
+              + (d.strengths && d.strengths[0] ? ' (' + d.strengths[0].label + ')' : ''),
+            onRemove: () => this.removeCustomMed(d.id)
+          })),
           hasItems: this.state.customDrugs.length > 0,
           back: () => this.backFromCustomMeds()
         };
