@@ -373,6 +373,10 @@
 
     const body = [header, fields];
 
+    if (cv.showAddCustomMed) {
+      body.push(el('button', { class: 'link-btn', onclick: cv.onAddCustomMed, style: 'margin:-8px 0 14px' }, ['+ Add a medication not in this list']));
+    }
+
     if (cv.showGate) {
       body.push(el('div', { class: 'card caution-gate' }, [
         warningIcon(20, 'muted-icon'),
@@ -415,6 +419,59 @@
         ]));
       }
       body.push(el('div', { class: 'text-muted', style: 'font-size:11px;font-style:italic' }, [cv.result.reference]));
+    }
+
+    return el('div', { class: 'screen screen-calc' }, body);
+  }
+
+  function customMedsScreen(vm) {
+    const cmv = vm.customMedsView;
+    const header = el('div', { class: 'screen-header calc-header' }, [
+      el('button', { class: 'icon-btn', onclick: cmv.back, 'aria-label': 'Back' }, [icon(ICONS.chevronLeft, { size: 22 })]),
+      el('div', { style: 'flex:1;min-width:0' }, [
+        el('div', { class: 'section-kicker' }, ['Drug dosing']),
+        el('h4', { style: 'margin:0;font-size:18px' }, ['Add a medication'])
+      ])
+    ]);
+
+    const form = el('div', { class: 'card', style: 'margin-bottom:14px' }, [
+      el('p', { class: 'text-muted', style: 'font-size:13px;margin:0 0 12px' }, ['Not in the built-in list? Add it here with its dose, frequency, and route — it will then also show up in the medication search.']),
+      el('div', { class: 'field', style: 'margin-bottom:12px' }, [
+        el('label', {}, ['Medication name']),
+        el('input', { class: 'input', value: cmv.name, placeholder: 'e.g. Amoxicillin', focusKey: 'custom-med-name', oninput: cmv.onName })
+      ]),
+      el('div', { class: 'field', style: 'margin-bottom:12px' }, [
+        el('label', {}, ['Dose']),
+        el('input', { class: 'input', value: cmv.dose, placeholder: 'e.g. 250 mg', focusKey: 'custom-med-dose', oninput: cmv.onDose })
+      ]),
+      el('div', { class: 'field', style: 'margin-bottom:12px' }, [
+        el('label', {}, ['Frequency']),
+        el('input', { class: 'input', value: cmv.frequency, placeholder: 'e.g. every 8 hours', focusKey: 'custom-med-frequency', oninput: cmv.onFrequency })
+      ]),
+      el('div', { class: 'field', style: 'margin-bottom:14px' }, [
+        el('label', {}, ['Route of administration']),
+        el('input', { class: 'input', value: cmv.route, placeholder: 'e.g. PO, IV, IM, SC', focusKey: 'custom-med-route', oninput: cmv.onRoute })
+      ]),
+      el('button', { class: 'btn btn-primary btn-block', disabled: !cmv.canAdd, onclick: cmv.onAdd }, ['Add medication'])
+    ]);
+
+    const body = [header, form];
+
+    if (cmv.hasItems) {
+      body.push(el('div', { class: 'card-kicker', style: 'margin-bottom:8px' }, ['Your added medications']));
+      const list = el('div', { class: 'calc-list' });
+      cmv.items.forEach(function (it) {
+        list.appendChild(el('div', { class: 'card', style: 'margin-bottom:10px' }, [
+          el('div', { style: 'display:flex;align-items:flex-start;gap:8px' }, [
+            el('div', { style: 'flex:1;min-width:0' }, [
+              el('div', { class: 'card-title', style: 'font-size:15px' }, [it.name]),
+              el('p', { class: 'card-body', style: 'margin-top:4px' }, [it.dosePanel])
+            ]),
+            el('button', { class: 'field-clear-btn', type: 'button', 'aria-label': 'Remove ' + it.name, onclick: it.onRemove }, [icon(ICONS.close, { size: 16 })])
+          ])
+        ]));
+      });
+      body.push(list);
     }
 
     return el('div', { class: 'screen screen-calc' }, body);
@@ -523,6 +580,7 @@
     else if (vm.isCalc) content = calcScreen(vm);
     else if (vm.isSaved) content = savedScreen(vm);
     else if (vm.isPatient) content = patientScreen(vm);
+    else if (vm.isCustomMeds) content = customMedsScreen(vm);
     const scroller = el('div', { class: 'screen-scroll' }, [content]);
     const reused = reuseFocusedNode(scroller, snap);
     root.innerHTML = '';

@@ -112,12 +112,18 @@ select { font: inherit; }
   min-height: 44px; transition: background .12s ease, transform .1s ease;
 }
 .btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
 .btn-primary { background: var(--color-accent-500); color: #fff; }
 .btn-primary:hover { background: var(--color-accent-600); }
 .btn-primary:active { background: var(--color-accent-700); transform: scale(0.98); }
 .btn-secondary { border-color: var(--color-divider); background: #fff; }
 .btn-secondary:hover { background: var(--color-surface); }
 .btn-block { width: 100%; margin-top: var(--space-2); }
+.link-btn {
+  display: block; background: none; border: none; color: var(--color-accent-600);
+  font: inherit; font-weight: 700; font-size: 13.5px; cursor: pointer; padding: 8px 2px;
+}
+.link-btn:hover, .link-btn:active { color: var(--color-accent-700); text-decoration: underline; }
 .icon-btn {
   background: transparent; border: none; color: inherit; cursor: pointer;
   padding: 8px; display: flex; align-items: center; justify-content: center;

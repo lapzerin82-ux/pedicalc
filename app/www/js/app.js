@@ -12,7 +12,8 @@
         calcOrigin: null, calcOriginCategory: null,
         search: '', drugFilter: '', inputsByCalc: {}, saved: [], ack: {},
         patient: { weightKg: null, heightCm: null, ageValue: null, ageUnit: 'years', sex: 'M', name: '', weightText: '', heightText: '', ageText: '' },
-        installAvailable: false
+        installAvailable: false,
+        customDrugs: [], customMedForm: { name: '', dose: '', frequency: '', route: '' }
       };
       this.CATEGORIES = CATEGORIES;
       this.CALCS = CALCS;
@@ -41,13 +42,30 @@
       if (!p.weightText && p.weightKg != null) p.weightText = String(this.displayWeight(p.weightKg));
       if (!p.heightText && p.heightCm != null) p.heightText = String(p.heightCm);
       if (!p.ageText && p.ageValue != null) p.ageText = String(p.ageValue);
+      try {
+        const customDrugs = JSON.parse(localStorage.getItem('pedicalc.customDrugs'));
+        if (Array.isArray(customDrugs)) this.state.customDrugs = customDrugs;
+      } catch (e) {}
+      // Custom medications live in state (so they persist/render like any
+      // other list) but also need to appear in the drug-dosing calculator's
+      // own search/select — which reads straight from calc.drugs — so we
+      // mirror them into that array in place rather than threading a merged
+      // list through every call site that reads calc.drugs.
+      this._syncCustomDrugsIntoCalc(this.state.customDrugs);
     }
 
     _persist() {
       try {
         localStorage.setItem('pedicalc.saved', JSON.stringify(this.state.saved));
         localStorage.setItem('pedicalc.patient', JSON.stringify(this.state.patient));
+        localStorage.setItem('pedicalc.customDrugs', JSON.stringify(this.state.customDrugs));
       } catch (e) {}
+    }
+
+    _syncCustomDrugsIntoCalc(customDrugs) {
+      const calc = this.drugCalc();
+      if (!calc) return;
+      calc.drugs = calc.drugs.filter(d => !d.isCustom).concat(customDrugs);
     }
 
     setState(update) {
@@ -76,6 +94,58 @@
       goSaved() { this.setState({ screen: 'saved', tab: 'saved' }); }
       goPatient() { this.setState({ screen: 'patient', tab: 'patient' }); }
       goCategory(catId) { this.setState({ screen: 'category', categoryId: catId, tab: 'home' }); }
+
+      // Custom (manually-entered) medications: a simple add/remove list that
+      // also mirrors into the drug-dosing calculator's own drug list (see
+      // _syncCustomDrugsIntoCalc), so a custom entry is searchable/selectable
+      // there and displays its dose/frequency/route via the normal
+      // reference-mode dose panel, just like a BNFC-sourced entry.
+      goCustomMeds() { this.setState({ screen: 'custom-meds' }); }
+      backFromCustomMeds() { this.setState({ screen: 'calc' }); }
+      updateCustomMedField(key, val) {
+        this.setState(s => ({ customMedForm: { ...s.customMedForm, [key]: val } }));
+      }
+      addCustomMed() {
+        const f = this.state.customMedForm;
+        const name = f.name.trim();
+        if (!name) return;
+        const dose = f.dose.trim(), frequency = f.frequency.trim(), route = f.route.trim();
+        const panelParts = [];
+        if (dose) panelParts.push('Dose: ' + dose + '.');
+        if (frequency) panelParts.push('Frequency: ' + frequency + '.');
+        if (route) panelParts.push('Route: ' + route + '.');
+        const drug = {
+          id: 'custom-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+          name: name, group: 'Custom (added by you)', mode: 'reference', route: route || '—',
+          dosePanel: panelParts.length ? panelParts.join(' ') : 'No dose/frequency/route entered.',
+          cautionText: 'Manually entered by you — not sourced from BNF for Children. Verify dose, frequency, and route independently before use.',
+          source: 'User-entered (manual custom medication).',
+          isCustom: true, strengths: []
+        };
+        const nextCustomDrugs = [...this.state.customDrugs, drug];
+        this._syncCustomDrugsIntoCalc(nextCustomDrugs);
+        this.setState({ customDrugs: nextCustomDrugs, customMedForm: { name: '', dose: '', frequency: '', route: '' } });
+      }
+      removeCustomMed(id) {
+        const nextCustomDrugs = this.state.customDrugs.filter(d => d.id !== id);
+        this._syncCustomDrugsIntoCalc(nextCustomDrugs);
+        this.setState({ customDrugs: nextCustomDrugs });
+      }
+      getCustomMedsView() {
+        const f = this.state.customMedForm;
+        return {
+          name: f.name, dose: f.dose, frequency: f.frequency, route: f.route,
+          onName: (e) => this.updateCustomMedField('name', e.target.value),
+          onDose: (e) => this.updateCustomMedField('dose', e.target.value),
+          onFrequency: (e) => this.updateCustomMedField('frequency', e.target.value),
+          onRoute: (e) => this.updateCustomMedField('route', e.target.value),
+          onAdd: () => this.addCustomMed(),
+          canAdd: f.name.trim().length > 0,
+          items: this.state.customDrugs.map(d => ({ id: d.id, name: d.name, dosePanel: d.dosePanel, onRemove: () => this.removeCustomMed(d.id) })),
+          hasItems: this.state.customDrugs.length > 0,
+          back: () => this.backFromCustomMeds()
+        };
+      }
     
       drugCalc() { return this.CALCS.find(c => c.id === 'drug-dosing'); }
     
@@ -298,10 +368,11 @@
           acknowledge: () => this.setState(s => ({ ack: { ...s.ack, [calc.id]: true } })),
           isSaved, isSavedNot: !isSaved,
           toggleSave: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.toggleSaveId(calc.id); },
+          showAddCustomMed: calc.id === 'drug-dosing', onAddCustomMed: () => this.goCustomMeds(),
           back: () => this.backFromCalc()
         };
       }
-    
+
       getCategoryView() {
         const cat = this.CATEGORIES.find(c => c.id === this.state.categoryId);
         if (!cat) return null;
@@ -373,12 +444,13 @@
     
         return {
           isHome: screen === 'home', isCategory: screen === 'category', isCalc: screen === 'calc', isSaved: screen === 'saved', isPatient: screen === 'patient',
+          isCustomMeds: screen === 'custom-meds',
           drugResults, hasDrugResults: drugResults.length > 0,
           search, onSearchChange: (e) => this.setState({ search: e.target.value }),
           hasSearch, hasNoSearch: !hasSearch, searchResults, noSearchResults: hasSearch && searchResults.length === 0 && drugResults.length === 0,
           homeCategories, hasSaved: this.state.saved.length > 0, savedPreview,
           patientChipLabel, patientView,
-          categoryView: this.getCategoryView(), calcView: this.getCurrentCalcView(),
+          categoryView: this.getCategoryView(), calcView: this.getCurrentCalcView(), customMedsView: this.getCustomMedsView(),
           savedView, hasSavedList: savedView.length > 0, hasNoSavedList: savedView.length === 0,
           installAvailable: this.state.installAvailable, onInstall: () => this.requestInstall(),
           goHome: () => this.goHome(), goSaved: () => this.goSaved(), goPatient: () => this.goPatient(),
