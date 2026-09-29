@@ -175,14 +175,11 @@
     });
 
     return el('div', { class: 'card', style: 'margin-bottom:12px' }, [
-      el('div', { class: 'card-kicker' }, ['Phototherapy chart — ' + (d.riskKey === 'yes' ? '≥1 neurotoxicity risk factor' : 'no risk factors')]),
+      el('div', { class: 'card-kicker' }, [(d.title || 'Phototherapy chart') + ' — ' + (d.riskKey === 'yes' ? '≥1 neurotoxicity risk factor' : 'no risk factors')]),
       svg,
       legend,
       el('p', { class: 'text-muted', style: 'font-size:11px;margin:8px 0 0' }, [
-        'Bold curve = this patient’s gestational age; others shown for context, as in the source chart. Dot = ' + d.tsb + ' mg/dL at ' + d.ageHours + 'h (' + (d.above ? 'at/above' : 'below') + ' this patient’s threshold).'
-      ]),
-      el('p', { class: 'text-muted', style: 'font-size:11px;margin:2px 0 0;font-style:italic' }, [
-        'Exchange-transfusion threshold is a separate, higher curve not yet included in this chart.'
+        'Bold curve = this patient’s gestational age; others shown for context, as in the source chart. Dot = ' + d.tsb + ' mg/dL at ' + d.ageHours + 'h (' + (d.above ? 'at/above' : 'below') + ' this patient’s ' + (d.verdictLabel || 'phototherapy') + ' threshold).'
       ])
     ]);
   }
@@ -489,6 +486,9 @@
       ]));
       if (cv.result.chartData) {
         body.push(phototherapyChart(cv.result.chartData));
+      }
+      if (cv.result.chartDataExchange) {
+        body.push(phototherapyChart(cv.result.chartDataExchange));
       }
       if (cv.result.interpretation) {
         body.push(el('div', { class: 'card', style: 'margin-bottom:12px' }, [

@@ -778,13 +778,17 @@ const CALCS = [
         ],
         // Hour-specific thresholds digitized (~12h resolution, ~±0.5–1 mg/dL
         // reading precision) from the AAP 2022 guideline's own phototherapy
-        // figures (Kemper AR et al., Pediatrics 2022;150:e2022058859, as
-        // reproduced via UpToDate) — the two curve sets the user supplied
-        // directly. Each array is [hour, threshold mg/dL]; compute()
-        // linearly interpolates between anchors and holds the last value
-        // flat beyond 336h (14 days), matching how the source charts end.
+        // AND exchange-transfusion figures (Kemper AR et al., Pediatrics
+        // 2022;150:e2022058859, as reproduced via UpToDate) — all four curve
+        // sets the user supplied directly. Each array is [hour, threshold
+        // mg/dL]; compute() linearly interpolates between anchors and holds
+        // the last value flat beyond 336h (14 days), matching how the source
+        // charts end. Note the exchange-transfusion charts only stratify GA
+        // up to "≥38 weeks" (not ≥40 like the no-risk phototherapy chart),
+        // and the source explicitly flags the first 24h as a stippled/
+        // uncertain portion of the curve — carried into the caution text.
         compute: (v) => {
-          const RISK_TABLES = {
+          const PHOTO_TABLES = {
             yes: {
               38: [[0, 6], [12, 9], [24, 11.3], [36, 13.2], [48, 14.7], [60, 16], [72, 17], [84, 17.7], [96, 18.2], [336, 18.3]],
               37: [[0, 6], [12, 8.7], [24, 11], [36, 12.8], [48, 14.3], [60, 15.6], [72, 16.6], [84, 17.3], [96, 17.9], [336, 18.1]],
@@ -800,36 +804,60 @@ const CALCS = [
               35: [[0, 7.3], [12, 10], [24, 12], [36, 13.6], [48, 14.9], [60, 15.9], [72, 16.6], [84, 17.1], [96, 17.4], [336, 19.2]]
             }
           };
-          const riskKey = v.riskFactors === 'yes' ? 'yes' : 'no';
-          const table = RISK_TABLES[riskKey];
-          const minGA = 35, maxGA = riskKey === 'yes' ? 38 : 40;
-          const gaInput = Math.floor(v.gaWeeks);
-          const gaUsed = Math.max(minGA, Math.min(maxGA, gaInput));
-          const anchors = table[gaUsed];
-          const h = Math.max(0, v.ageHours);
-          let threshold = anchors[anchors.length - 1][1];
-          if (h <= anchors[0][0]) threshold = anchors[0][1];
-          else {
-            for (let i = 0; i < anchors.length - 1; i++) {
-              const [h1, t1] = anchors[i]; const [h2, t2] = anchors[i + 1];
-              if (h >= h1 && h <= h2) { threshold = t1 + (t2 - t1) * (h - h1) / (h2 - h1); break; }
+          const EXCHANGE_TABLES = {
+            yes: {
+              38: [[0, 14], [12, 16.8], [24, 19.3], [36, 20.7], [48, 21.7], [60, 22.4], [72, 22.9], [84, 23.2], [96, 23.4], [336, 23.5]],
+              37: [[0, 13.7], [12, 16.5], [24, 19], [36, 20.4], [48, 21.4], [60, 22.1], [72, 22.7], [84, 23], [96, 23.3], [336, 23.4]],
+              36: [[0, 13.3], [12, 16.4], [24, 18.7], [36, 20], [48, 21], [60, 21.6], [72, 21.9], [84, 22], [96, 22.1], [336, 23.3]],
+              35: [[0, 13], [12, 15.5], [24, 17.5], [36, 18.8], [48, 19.7], [60, 20.3], [72, 20.7], [84, 21], [96, 21.1], [336, 23.1]]
+            },
+            no: {
+              38: [[0, 16], [12, 18.7], [24, 21], [36, 22.8], [48, 24.2], [60, 25.3], [72, 26.1], [84, 26.6], [96, 27], [336, 27.3]],
+              37: [[0, 15.5], [12, 18.2], [24, 20.5], [36, 22.3], [48, 23.7], [60, 24.8], [72, 25.6], [84, 26.1], [96, 26.5], [336, 27]],
+              36: [[0, 15], [12, 17.3], [24, 19.5], [36, 21.2], [48, 22.5], [60, 23.6], [72, 24.5], [84, 25.1], [96, 25.5], [336, 26.5]],
+              35: [[0, 14.5], [12, 16.3], [24, 18.3], [36, 19.9], [48, 21.2], [60, 22.3], [72, 23.2], [84, 23.9], [96, 24.3], [336, 26]]
             }
+          };
+          function lookup(table, riskKey, gaInputFloor, minGA, maxGA, hours) {
+            const gaUsed = Math.max(minGA, Math.min(maxGA, gaInputFloor));
+            const anchors = table[riskKey][gaUsed];
+            let val = anchors[anchors.length - 1][1];
+            if (hours <= anchors[0][0]) val = anchors[0][1];
+            else {
+              for (let i = 0; i < anchors.length - 1; i++) {
+                const h1 = anchors[i][0], t1 = anchors[i][1], h2 = anchors[i + 1][0], t2 = anchors[i + 1][1];
+                if (hours >= h1 && hours <= h2) { val = t1 + (t2 - t1) * (hours - h1) / (h2 - h1); break; }
+              }
+            }
+            return { value: val, gaUsed: gaUsed };
           }
-          const above = v.tsb >= threshold;
-          const approaching = !above && v.tsb >= threshold - 1.5;
-          const outOfRange = gaInput !== gaUsed;
+          const riskKey = v.riskFactors === 'yes' ? 'yes' : 'no';
+          const minGA = 35;
+          const photoMaxGA = riskKey === 'yes' ? 38 : 40;
+          const exchangeMaxGA = 38;
+          const gaInput = Math.floor(v.gaWeeks);
+          const h = Math.max(0, v.ageHours);
+          const photo = lookup(PHOTO_TABLES, riskKey, gaInput, minGA, photoMaxGA, h);
+          const exchange = lookup(EXCHANGE_TABLES, riskKey, gaInput, minGA, exchangeMaxGA, h);
+          const zone = v.tsb >= exchange.value ? 'exchange' : v.tsb >= photo.value ? 'photo' : 'normal';
+          const approaching = zone === 'normal' && v.tsb >= photo.value - 1.5;
+          const zoneLabel = zone === 'exchange' ? 'At or above the exchange-transfusion threshold' : zone === 'photo' ? 'At or above the phototherapy threshold (below exchange-transfusion threshold)' : 'Below the phototherapy threshold (physiological range)';
           return {
-            value: threshold.toFixed(1), unit: 'mg/dL',
-            label: 'Phototherapy threshold — ' + gaUsed + 'wk, ' + (riskKey === 'yes' ? '≥1 risk factor' : 'no risk factors') + ', ' + Math.round(h) + 'h',
-            interpretation: (gaInput < minGA ? 'This nomogram applies to infants ≥35 weeks gestation — for <35 weeks, use neonatology/specialist guidance instead; the value below is extrapolated from the 35-week curve and may not be appropriate. ' : '')
-              + (above ? 'TSB is at or above the phototherapy threshold for this gestational age, age, and risk-factor status.'
-                : approaching ? 'TSB is within 1.5 mg/dL of the threshold — reassess soon and consider a repeat TSB/TcB per unit protocol.'
-                : 'TSB is below the phototherapy threshold for this gestational age, age, and risk-factor status.')
-              + (outOfRange && gaInput >= minGA ? (' Using the ' + gaUsed + '-week curve (chart tops out at ≥' + maxGA + ' weeks for this risk-factor status).') : ''),
-            action: above ? 'Initiate phototherapy per unit protocol; recheck TSB per protocol (typically within 4–24 hours depending on trajectory and risk factors).' : 'Continue routine monitoring; repeat TSB/TcB per standard newborn bilirubin screening schedule and risk trajectory.',
-            caution: 'Thresholds are digitized from the AAP 2022 hour-specific phototherapy figures at roughly 12-hour resolution — treat as approximate (±~0.5–1 mg/dL) and confirm against the official chart/AAP BiliTool before any clinical decision, especially when TSB is close to the threshold. Neurotoxicity risk factors include isoimmune or other hemolytic disease, G6PD deficiency, birth asphyxia, sepsis, acidosis, albumin <3.0 g/dL, significant lethargy, and temperature instability. Do not subtract direct/conjugated bilirubin from TSB before comparing to the threshold. This gives the phototherapy threshold only — it does NOT provide exchange-transfusion or escalation-of-care thresholds, which are separate, higher curves.',
+            value: photo.value.toFixed(1), unit: 'mg/dL (photo) · ' + exchange.value.toFixed(1) + ' mg/dL (exchange)',
+            label: zoneLabel + ' — ' + photo.gaUsed + 'wk, ' + (riskKey === 'yes' ? '≥1 risk factor' : 'no risk factors') + ', ' + Math.round(h) + 'h',
+            interpretation: (gaInput < minGA ? 'This nomogram applies to infants ≥35 weeks gestation — for <35 weeks, use neonatology/specialist guidance instead; the values below are extrapolated from the 35-week curves and may not be appropriate. ' : '')
+              + (zone === 'exchange' ? 'TSB is at or above the exchange-transfusion threshold — this is an emergency.'
+                : zone === 'photo' ? 'TSB is at or above the phototherapy threshold but below the exchange-transfusion threshold.'
+                : approaching ? 'TSB is below the phototherapy threshold but within 1.5 mg/dL of it — reassess soon and consider a repeat TSB/TcB per unit protocol.'
+                : 'TSB is in the physiological range, below the phototherapy threshold.')
+              + (photo.gaUsed !== exchange.gaUsed ? (' Phototherapy uses the ' + photo.gaUsed + '-week curve; exchange transfusion uses the ' + exchange.gaUsed + '-week curve (the exchange chart only stratifies up to ≥38 weeks, unlike the ' + photoMaxGA + '-week ceiling for phototherapy at this risk-factor status).') : ''),
+            action: zone === 'exchange' ? 'EMERGENCY: arrange exchange transfusion — involve neonatology/specialist care immediately; start intensive phototherapy while arranging transfusion; recheck TSB every 2–3 hours during workup.'
+              : zone === 'photo' ? 'Initiate phototherapy per unit protocol; recheck TSB per protocol (typically within 4–24 hours depending on trajectory and risk factors); escalate promptly if TSB continues rising toward the exchange-transfusion threshold.'
+              : 'Continue routine monitoring; repeat TSB/TcB per standard newborn bilirubin screening schedule and risk trajectory.',
+            caution: 'Thresholds are digitized from the AAP 2022 hour-specific phototherapy and exchange-transfusion figures at roughly 12-hour resolution — treat as approximate (±~0.5–1 mg/dL) and confirm against the official chart/AAP BiliTool before any clinical decision, especially when TSB is close to either threshold. The source chart itself marks the first 24 hours of the exchange-transfusion curves as uncertain (wide range of clinical circumstances/response to intensive phototherapy) — weight that portion accordingly and involve a specialist early. Neurotoxicity risk factors include isoimmune or other hemolytic disease, G6PD deficiency, birth asphyxia, sepsis, acidosis, albumin <3.0 g/dL, significant lethargy, and temperature instability. Do not subtract direct/conjugated bilirubin from TSB before comparing to either threshold.',
             reference: 'AAP Clinical Practice Guideline (Kemper AR et al., Pediatrics 2022;150:e2022058859); figures as reproduced via UpToDate, © 2022 AAP.',
-            chartData: { allCurves: table, gaUsed: gaUsed, riskKey: riskKey, ageHours: h, tsb: v.tsb, above: above }
+            chartData: { allCurves: PHOTO_TABLES[riskKey], gaUsed: photo.gaUsed, riskKey: riskKey, ageHours: h, tsb: v.tsb, above: zone !== 'normal', title: 'Phototherapy chart', verdictLabel: 'phototherapy' },
+            chartDataExchange: { allCurves: EXCHANGE_TABLES[riskKey], gaUsed: exchange.gaUsed, riskKey: riskKey, ageHours: h, tsb: v.tsb, above: zone === 'exchange', title: 'Exchange-transfusion chart', verdictLabel: 'exchange-transfusion' }
           };
         }
       },
