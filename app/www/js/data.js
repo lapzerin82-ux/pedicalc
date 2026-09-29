@@ -502,9 +502,9 @@ const CALCS = [
           return {
             value: mlHr.toFixed(1), unit: 'mL/hr', label: 'Maintenance IV rate',
             interpretation: 'Total maintenance requirement ≈ ' + mlDay.toFixed(0) + ' mL/day (Holliday–Segar method).',
-            action: 'Start isotonic maintenance fluid (e.g., D5 with appropriate NaCl/KCl) at the calculated rate; adjust for ongoing losses.',
-            caution: 'Not for resuscitation — use an isotonic bolus (20 mL/kg) for shock. Adjust for fever, renal, cardiac, or SIADH-risk states.',
-            reference: 'Holliday MA, Segar WE. Pediatrics. 1957.'
+            action: 'Start isotonic maintenance fluid (e.g., 0.9% saline or D5 0.9% saline with appropriate KCl) at the calculated rate; adjust for ongoing losses.',
+            caution: 'Not for resuscitation — use an isotonic bolus (20 mL/kg) for shock. The 2018 AAP guideline recommends isotonic (not hypotonic) maintenance fluid for most hospitalized children 28 days–18 years, to reduce hyponatremia risk — reserve hypotonic fluid for specific exceptions (e.g., some neonates, free-water-deficit states). Adjust for fever, renal, cardiac, or SIADH-risk states, and monitor serum sodium during prolonged IV therapy.',
+            reference: 'Holliday MA, Segar WE. Pediatrics. 1957 (volume method); Feld LG, et al. AAP Clinical Practice Guideline: Maintenance Intravenous Fluids in Children. Pediatrics. 2018;142(6):e20183083 (isotonicity recommendation).'
           };
         }
       },
@@ -520,9 +520,9 @@ const CALCS = [
           return {
             value: deficitMl.toFixed(0), unit: 'mL', label: 'Estimated fluid deficit',
             interpretation: pct >= 10 ? 'Severe dehydration — assess urgently for shock.' : pct >= 7.5 ? 'Moderate dehydration.' : 'Mild dehydration.',
-            action: 'Replace ~' + half.toFixed(0) + ' mL over the first 8h and ' + half.toFixed(0) + ' mL over the next 16h, in addition to ongoing maintenance fluids.',
-            caution: 'Reassess hydration status frequently; consider oral rehydration if tolerating PO and not severely dehydrated. Escalate to bolus resuscitation if signs of shock.',
-            reference: 'AAP Clinical Practice Guideline: Managing Acute Gastroenteritis in Children.'
+            action: 'Oral rehydration therapy is first-line for mild-to-moderate dehydration if tolerating PO (including via NG if needed) — reserve IV replacement for severe dehydration, shock, or failed/not-tolerated ORT. If IV replacement is used for iso-/hyponatremic dehydration: replace ~' + half.toFixed(0) + ' mL over the first 8h and ' + half.toFixed(0) + ' mL over the next 16h, in addition to ongoing maintenance fluids.',
+            caution: 'This 8h/16h replacement schedule assumes iso- or hyponatremic dehydration. If hypernatremic (Na >150 mEq/L), do NOT use this schedule — correct much more slowly (typically over 48h) with frequent sodium monitoring, since rapid correction risks cerebral edema and seizures. Reassess hydration status frequently and escalate to bolus resuscitation (isotonic 20 mL/kg) if signs of shock.',
+            reference: 'AAP Clinical Practice Guideline: Managing Acute Gastroenteritis in Children (2003, reaffirmed); ESPGHAN/ESPID 2014 gastroenteritis guideline (oral rehydration as first-line).'
           };
         }
       },
@@ -537,10 +537,10 @@ const CALCS = [
           const ag = v.na - (v.cl + v.hco3); const corrected = ag + 2.5 * (4 - v.albumin);
           return {
             value: ag.toFixed(1), unit: 'mEq/L', label: 'Anion gap (albumin-corrected: ' + corrected.toFixed(1) + ')',
-            interpretation: ag > 16 ? 'Elevated — consider high anion-gap metabolic acidosis (MUDPILES: methanol, uremia, DKA, propylene glycol, iron/isoniazid, lactic acidosis, ethylene glycol, salicylates).' : ag < 8 ? 'Low — consider hypoalbuminemia, lithium, or multiple myeloma.' : 'Within the typical normal range.',
+            interpretation: ag > 16 ? 'Elevated by the traditional (~8–16) reference range — consider high anion-gap metabolic acidosis (MUDPILES: methanol, uremia, DKA, propylene glycol, iron/isoniazid, lactic acidosis, ethylene glycol, salicylates).' : ag < 8 ? 'Low by the traditional reference range — consider hypoalbuminemia, lithium, or multiple myeloma; also consider bromide/iodide toxicity or lab error.' : 'Within the traditional (~8–16 mEq/L) reference range — but see caution re: modern analyzers.',
             action: 'Correlate with serum lactate, ketones, osmolar gap, and toxin screen if elevated.',
-            caution: 'Hypoalbuminemia lowers the measured anion gap — use the albumin-corrected value.',
-            reference: 'Standard clinical biochemistry reference; institutional lab range may vary (~8–16 mEq/L).'
+            caution: 'The "normal" anion gap is method-dependent: the classic ~8–16 mEq/L range reflects older chloride assays, while most modern ion-selective-electrode (ISE) analyzers read chloride slightly higher, giving a lower normal range (commonly cited as ~3–11 mEq/L). Interpret against your own lab\'s stated reference range, not this fixed cutoff. Hypoalbuminemia lowers the measured anion gap — use the albumin-corrected value (each 1 g/dL fall in albumin below 4 lowers the gap by ~2.5 mEq/L).',
+            reference: 'Standard clinical biochemistry reference (Emmett M, Narins RG. Medicine. 1977, classic ~8–16 range); Kraut JA, Madias NE. Clin J Am Soc Nephrol. 2007 (modern ISE-based lower ranges, ~3–11).'
           };
         }
       },
@@ -555,8 +555,8 @@ const CALCS = [
             value: corrected.toFixed(1), unit: 'mg/dL', label: 'Albumin-corrected calcium',
             interpretation: corrected < 8.8 ? 'Low — hypocalcemia.' : corrected > 10.8 ? 'High — hypercalcemia.' : 'Within normal pediatric range (~8.8–10.8 mg/dL).',
             action: corrected < 8.8 ? 'If symptomatic (tetany, seizure, QT prolongation), treat with IV calcium gluconate; otherwise recheck ionized calcium and repeat.' : corrected > 10.8 ? 'Ensure hydration, review medications/vitamin D intake, and investigate underlying cause.' : 'No immediate action; recheck if clinically indicated.',
-            caution: 'This formula is an estimate — ionized calcium is the gold standard, especially in critically ill patients.',
-            reference: 'Payne RB, et al. Br Med J. 1973 (albumin correction formula).'
+            caution: 'This formula performs poorly and is increasingly considered unreliable in critically ill, acidotic, or CKD patients — several validation studies show it frequently misclassifies calcium status in these groups. Measure ionized calcium directly whenever it is available or the patient is unwell; use this correction only as a rough outpatient/screening estimate when ionized calcium isn\'t accessible.',
+            reference: 'Payne RB, et al. Br Med J. 1973 (original albumin correction formula); Ridefelt P, et al. Ups J Med Sci. 2014, and similar validation studies (poor performance in critically ill patients).'
           };
         }
       },
@@ -578,7 +578,7 @@ const CALCS = [
           };
         }
       },
-      { id: 'asthma-severity', name: 'Asthma severity', categoryId: 'resp', flagship: true,
+      { id: 'asthma-severity', name: 'Asthma severity (treatment-naive)', categoryId: 'resp', flagship: true,
         fields: [
           { key: 'daytime', label: 'Daytime symptoms', type: 'seg', default: '0', options: [ { value: '0', label: '≤2 days/wk' }, { value: '1', label: '>2 days/wk' }, { value: '2', label: 'Daily' }, { value: '3', label: 'Throughout day' } ] },
           { key: 'nights', label: 'Nighttime awakenings', type: 'seg', default: '0', options: [ { value: '0', label: 'None' }, { value: '1', label: '1–2×/mo' }, { value: '2', label: '3–4×/mo' }, { value: '3', label: '>1×/wk' } ] },
@@ -596,10 +596,60 @@ const CALCS = [
           ];
           return {
             value: labels[idx], unit: '', label: 'Asthma severity classification',
-            interpretation: 'Classified by the most severe domain reported.',
+            interpretation: 'Classified by the most severe domain reported. This severity classification is for a patient NOT currently on daily controller therapy, to select initial treatment — it is a different NAEPP table (with different domains, including SABA-for-symptom-control frequency, exacerbations requiring oral steroids, and validated questionnaires like the ACT/C-ACT) from "asthma control," used to step therapy up or down in a patient already on a controller.',
             action: steps[idx],
-            caution: 'Reassess control in 2–6 weeks; check inhaler technique, adherence, and screen for comorbid allergic rhinitis or GERD before escalating therapy.',
-            reference: 'NAEPP EPR-3 / 2020 Focused Updates — Asthma Management Guidelines.'
+            caution: 'Do not use this severity table to reassess a patient already on daily controller therapy — use the NAEPP asthma control criteria instead. Reassess in 2–6 weeks; check inhaler technique and adherence, and screen for comorbid allergic rhinitis or GERD before escalating therapy.',
+            reference: 'NAEPP EPR-3 (2007) / 2020 Focused Updates — Asthma Management Guidelines (severity-classification table, treatment-naive patients).'
+          };
+        }
+      },
+      { id: 'bronchiolitis-severity', name: 'Bronchiolitis severity', categoryId: 'resp', flagship: false,
+        fields: [
+          { key: 'appearance', label: 'General appearance', type: 'seg', default: '0', options: [ { value: '0', label: 'Well/interactive' }, { value: '1', label: 'Mildly irritable/tired' }, { value: '2', label: 'Lethargic or toxic-appearing' } ] },
+          { key: 'feeding', label: 'Feeding/hydration', type: 'seg', default: '0', options: [ { value: '0', label: 'Normal intake' }, { value: '1', label: 'Reduced intake' }, { value: '2', label: 'Unable to feed / persistent vomiting' } ] },
+          { key: 'workOfBreathing', label: 'Work of breathing', type: 'seg', default: '0', options: [ { value: '0', label: 'None/mild retractions, normal RR' }, { value: '1', label: 'Moderate retractions and/or nasal flaring, increased RR' }, { value: '2', label: 'Severe retractions, grunting, marked tachypnea' } ] },
+          { key: 'apnea', label: 'Witnessed apnea', type: 'seg', default: 'no', options: [ { value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' } ] },
+          { key: 'spo2', label: 'SpO2 on room air (%)', type: 'number', default: 96, step: 1 }
+        ],
+        compute: (v) => {
+          const spo2Score = v.spo2 < 90 ? 2 : v.spo2 < 92 ? 1 : 0;
+          const apneaScore = v.apnea === 'yes' ? 2 : 0;
+          const idx = Math.max(Number(v.appearance), Number(v.feeding), Number(v.workOfBreathing), spo2Score, apneaScore);
+          const labels = ['Mild bronchiolitis', 'Moderate bronchiolitis', 'Severe bronchiolitis'];
+          const actions = [
+            'Supportive care only: nasal suction, ensure adequate hydration/feeding, antipyretics if needed. Most infants with mild bronchiolitis are managed safely at home with clear safety-netting advice.',
+            'Supportive care; supplemental O2 if SpO2 persistently <90%; consider IV/NG fluids if intake inadequate; observe closely, especially infants <12 weeks or with risk factors — admit if not improving or risk factors present.',
+            'Admit; escalate respiratory support (e.g., high-flow nasal cannula/CPAP per unit protocol) as needed; consider PICU; closely monitor for apnea, especially in former preterm infants and those <8–12 weeks old.'
+          ];
+          return {
+            value: labels[idx], unit: '', label: 'Bronchiolitis severity (worst domain)',
+            interpretation: v.apnea === 'yes' ? 'Witnessed apnea alone classifies as severe regardless of other findings.' : 'Classified by the single most concerning domain.',
+            action: actions[idx],
+            caution: 'Per the AAP 2014 Bronchiolitis guideline, bronchodilators, systemic corticosteroids, chest physiotherapy, and antibacterials are NOT routinely recommended for typical viral bronchiolitis — reserve for atypical features (e.g., history/family history suggesting asthma, suspected bacterial superinfection). Supportive care is the mainstay. Have a lower threshold for admission with age <12 weeks, prematurity, or underlying cardiopulmonary, neuromuscular, or immunodeficiency disease.',
+            reference: 'AAP Clinical Practice Guideline: Diagnosis, Management, and Prevention of Bronchiolitis (Ralston SL, et al. Pediatrics. 2014;134:e1474–e1502).'
+          };
+        }
+      },
+      { id: 'croup-westley', name: 'Croup severity (Westley score)', categoryId: 'resp', flagship: false,
+        fields: [
+          { key: 'stridor', label: 'Stridor', type: 'seg', default: '0', options: [ { value: '0', label: 'None' }, { value: '1', label: 'When agitated' }, { value: '2', label: 'At rest' } ] },
+          { key: 'retractions', label: 'Retractions', type: 'seg', default: '0', options: [ { value: '0', label: 'None' }, { value: '1', label: 'Mild' }, { value: '2', label: 'Moderate' }, { value: '3', label: 'Severe' } ] },
+          { key: 'airEntry', label: 'Air entry', type: 'seg', default: '0', options: [ { value: '0', label: 'Normal' }, { value: '1', label: 'Decreased' }, { value: '2', label: 'Markedly decreased' } ] },
+          { key: 'cyanosis', label: 'Cyanosis', type: 'seg', default: '0', options: [ { value: '0', label: 'None' }, { value: '4', label: 'With agitation' }, { value: '5', label: 'At rest' } ] },
+          { key: 'consciousness', label: 'Level of consciousness', type: 'seg', default: '0', options: [ { value: '0', label: 'Normal' }, { value: '5', label: 'Altered/disoriented' } ] }
+        ],
+        compute: (v) => {
+          const total = Number(v.stridor) + Number(v.retractions) + Number(v.airEntry) + Number(v.cyanosis) + Number(v.consciousness);
+          const severe = total >= 8; const moderate = !severe && total >= 3;
+          return {
+            value: String(total), unit: '/ 17', label: 'Westley croup score',
+            interpretation: total >= 12 ? 'Very high score — impending respiratory failure; treat as an emergency.' : severe ? 'Severe croup.' : moderate ? 'Moderate croup.' : 'Mild croup.',
+            action: (severe ? 'Give dexamethasone (0.15–0.6 mg/kg PO/IM/IV, single dose, max ~16mg) AND nebulized epinephrine; prepare for possible advanced airway; admit, likely to PICU. '
+              : moderate ? 'Give dexamethasone (0.15–0.6 mg/kg, single dose) and consider nebulized epinephrine; observe at least 2–4 hours after any epinephrine dose (effect wanes ~2h; watch for rebound) before deciding on discharge. '
+              : 'Give a single dose of oral dexamethasone (0.15–0.6 mg/kg) — current evidence supports steroids even for mild croup; supportive care (cool mist/hydration have limited evidence but are low-risk), safety-net advice, no epinephrine needed. ')
+              + 'Keep the child calm — agitation worsens dynamic airway obstruction.',
+            caution: 'The Westley score is a research/severity-communication tool, not a strict standalone treatment algorithm — always integrate the overall clinical picture. Cyanosis or altered consciousness (large point contributions) demand immediate escalation regardless of the numeric total. Nebulized epinephrine\'s effect wears off in ~2 hours; observe for rebound stridor before discharge.',
+            reference: 'Westley CR, et al. Am J Dis Child. 1978;132:484–487; contemporary dosing/management per AAP and Cochrane croup reviews.'
           };
         }
       },
@@ -705,7 +755,7 @@ const CALCS = [
       { id: 'gcs', name: 'GCS', categoryId: 'neuro', flagship: false,
         fields: [
           { key: 'eye', label: 'Eye opening', type: 'seg', default: '4', options: [ { value: '4', label: 'Spontaneous' }, { value: '3', label: 'To sound' }, { value: '2', label: 'To pressure' }, { value: '1', label: 'None' } ] },
-          { key: 'verbal', label: 'Verbal response', type: 'seg', default: '5', options: [ { value: '5', label: 'Oriented' }, { value: '4', label: 'Confused' }, { value: '3', label: 'Words' }, { value: '2', label: 'Sounds' }, { value: '1', label: 'None' } ] },
+          { key: 'verbal', label: 'Verbal response (adult/verbal-child ⁄ infant/preverbal)', type: 'seg', default: '5', options: [ { value: '5', label: 'Oriented ⁄ coos, babbles' }, { value: '4', label: 'Confused ⁄ irritable cry' }, { value: '3', label: 'Words ⁄ cries to pain' }, { value: '2', label: 'Sounds ⁄ moans to pain' }, { value: '1', label: 'None' } ] },
           { key: 'motor', label: 'Motor response', type: 'seg', default: '6', options: [ { value: '6', label: 'Obeys' }, { value: '5', label: 'Localizes' }, { value: '4', label: 'Withdraws' }, { value: '3', label: 'Flexion' }, { value: '2', label: 'Extension' }, { value: '1', label: 'None' } ] }
         ],
         compute: (v) => {
@@ -714,8 +764,8 @@ const CALCS = [
             value: String(total), unit: '/ 15', label: 'Glasgow Coma Scale',
             interpretation: total >= 13 ? 'Mild impairment.' : total >= 9 ? 'Moderate impairment.' : 'Severe impairment.',
             action: total <= 8 ? 'Consider airway protection/intubation, urgent neuroimaging, and neurosurgical consultation.' : total <= 12 ? 'Close neurological monitoring; consider CT imaging per clinical judgment.' : 'Routine neurological monitoring; reassess with any change in status.',
-            caution: 'Use age-appropriate (modified) verbal criteria for children under 2 years. Serial trends matter more than a single score.',
-            reference: 'Teasdale G, Jennett B. Lancet. 1974; pediatric modifications per PALS.'
+            caution: 'The verbal options above pair each adult-style descriptor with its infant/preverbal (modified pediatric GCS) equivalent — pick whichever fits the child\'s developmental stage. Eye-opening and motor domains use the same criteria across ages. Serial trends matter more than a single score, and in infants <2 years interpret cautiously alongside overall clinical appearance.',
+            reference: 'Teasdale G, Jennett B. Lancet. 1974; James HE, Trauner DA. Pediatric coma scale (modified/pediatric GCS verbal criteria), 1985; PALS Provider Manual.'
           };
         }
       },
@@ -779,6 +829,83 @@ const CALCS = [
             action: above ? 'Initiate phototherapy per unit protocol; recheck TSB per protocol (typically within 4–24 hours depending on trajectory and risk factors).' : 'Continue routine monitoring; repeat TSB/TcB per standard newborn bilirubin screening schedule and risk trajectory.',
             caution: 'Thresholds are digitized from the AAP 2022 hour-specific phototherapy figures at roughly 12-hour resolution — treat as approximate (±~0.5–1 mg/dL) and confirm against the official chart/AAP BiliTool before any clinical decision, especially when TSB is close to the threshold. Neurotoxicity risk factors include isoimmune or other hemolytic disease, G6PD deficiency, birth asphyxia, sepsis, acidosis, albumin <3.0 g/dL, significant lethargy, and temperature instability. Do not subtract direct/conjugated bilirubin from TSB before comparing to the threshold. This gives the phototherapy threshold only — it does NOT provide exchange-transfusion or escalation-of-care thresholds, which are separate, higher curves.',
             reference: 'AAP Clinical Practice Guideline (Kemper AR et al., Pediatrics 2022;150:e2022058859); figures as reproduced via UpToDate, © 2022 AAP.'
+          };
+        }
+      },
+      { id: 'apgar', name: 'APGAR score', categoryId: 'neonatal', flagship: false,
+        fields: [
+          { key: 'heartRate', label: 'Heart rate', type: 'seg', default: '2', options: [ { value: '0', label: 'Absent' }, { value: '1', label: '<100/min' }, { value: '2', label: '≥100/min' } ] },
+          { key: 'respiratory', label: 'Respiratory effort', type: 'seg', default: '2', options: [ { value: '0', label: 'Absent' }, { value: '1', label: 'Slow/irregular, weak cry' }, { value: '2', label: 'Good, strong cry' } ] },
+          { key: 'tone', label: 'Muscle tone', type: 'seg', default: '2', options: [ { value: '0', label: 'Limp' }, { value: '1', label: 'Some flexion' }, { value: '2', label: 'Active motion' } ] },
+          { key: 'reflex', label: 'Reflex irritability', type: 'seg', default: '2', options: [ { value: '0', label: 'No response' }, { value: '1', label: 'Grimace' }, { value: '2', label: 'Grimace + cry/cough/sneeze' } ] },
+          { key: 'color', label: 'Color', type: 'seg', default: '1', options: [ { value: '0', label: 'Blue/pale all over' }, { value: '1', label: 'Body pink, extremities blue' }, { value: '2', label: 'Completely pink' } ] }
+        ],
+        compute: (v) => {
+          const total = Number(v.heartRate) + Number(v.respiratory) + Number(v.tone) + Number(v.reflex) + Number(v.color);
+          return {
+            value: String(total), unit: '/ 10', label: 'APGAR score',
+            interpretation: total >= 7 ? 'Reassuring.' : total >= 4 ? 'Moderately abnormal — may need resuscitative measures (stimulation, suction, supplemental O2/PPV).' : 'Low — needs immediate resuscitation.',
+            action: 'Conventionally assigned at 1 and 5 minutes of life; if <7 at 5 minutes, continue reassessing every 5 minutes until ≥7 or up to 20 minutes. Never delay resuscitation to calculate the score — follow the NRP algorithm (breathing, heart rate, tone, assessed continuously) in real time.',
+            caution: 'The APGAR score does not guide resuscitation steps or timing — the NRP algorithm does. A low 1-minute score alone does not reliably predict long-term neurodevelopmental outcome; a persistently low 5- and 10-minute score is more prognostically significant.',
+            reference: 'Apgar V. Curr Res Anesth Analg. 1953;32:260–267; AAP/AHA Neonatal Resuscitation Program (NRP), 8th ed.'
+          };
+        }
+      },
+      { id: 'bp-hypertension', name: 'Blood pressure classification (hypertension)', categoryId: 'emergency', flagship: false,
+        fields: [
+          { key: 'age', label: 'Age (years)', type: 'number', default: 10, step: 1 },
+          { key: 'sbp', label: 'Systolic BP (mmHg)', type: 'number', default: 110, step: 1 },
+          { key: 'dbp', label: 'Diastolic BP (mmHg)', type: 'number', default: 70, step: 1 }
+        ],
+        compute: (v) => {
+          if (v.age >= 13) {
+            let category, action;
+            if (v.sbp >= 140 || v.dbp >= 90) { category = 'Stage 2 hypertension'; action = 'Repeat BP to confirm; if confirmed, evaluate promptly (within 1 week, sooner if symptomatic) and consider antihypertensive therapy per specialist/nephrology guidance.'; }
+            else if (v.sbp >= 130 || v.dbp >= 80) { category = 'Stage 1 hypertension'; action = 'Recheck on ≥2 further occasions; if confirmed, lifestyle modification and workup for secondary causes/target-organ damage; consider nephrology referral.'; }
+            else if (v.sbp >= 120) { category = 'Elevated BP'; action = 'Lifestyle counseling (weight, diet, activity); recheck in 6 months.'; }
+            else { category = 'Normal BP'; action = 'Routine recheck at next well visit.'; }
+            return {
+              value: category, unit: '', label: 'BP category (age ≥13y, adult-style AAP 2017 cutoffs)',
+              interpretation: 'For age ≥13 years, the AAP 2017 guideline adopts adult-style fixed cutoffs regardless of height: Normal <120/<80, Elevated 120–129/<80, Stage 1 130–139/80–89, Stage 2 ≥140/≥90 (worse of SBP/DBP determines category).',
+              action: action,
+              caution: 'A single elevated reading is not diagnostic — confirm on repeated visits with a properly sized cuff (auscultatory method preferred to confirm an abnormal oscillometric reading). Screen for secondary causes and target-organ damage if persistently elevated.',
+              reference: 'Flynn JT, et al. AAP Clinical Practice Guideline: Screening and Management of High Blood Pressure in Children and Adolescents. Pediatrics. 2017;140:e20171904.'
+            };
+          }
+          const flagged = v.sbp >= 120 || v.dbp >= 80;
+          return {
+            value: flagged ? 'Above simplified screening flag' : 'Below simplified screening flag', unit: '', label: 'BP screen (age <13y, simplified rule)',
+            interpretation: 'For ages 1–12 years, true classification needs the full age/sex/height-percentile tables (90th/95th/95th+12 percentile) — this tool only applies the AAP 2017 guideline\'s quick screening rule: any BP ≥120/≥80 mmHg should be flagged for formal percentile lookup regardless of the child\'s exact percentile, since it approximates or exceeds the 90th percentile for nearly all ages/heights in this range.',
+            action: flagged ? 'Look up the exact percentile using the full age/sex/height-specific tables; recheck on repeated visits before labelling as hypertension.' : 'Likely normal, but if any risk factors are present (obesity, prematurity, congenital heart/renal disease, recurrent UTI, family history), confirm with the full percentile tables rather than relying on this screen alone.',
+            caution: 'Routine BP screening is not recommended below age 3 years except with specific risk factors (e.g., prematurity, neonatal intensive care history, congenital heart or renal disease, recurrent UTI, on medications known to raise BP). Use a properly sized cuff; confirm any abnormal oscillometric reading by auscultation.',
+            reference: 'Flynn JT, et al. AAP Clinical Practice Guideline: Screening and Management of High Blood Pressure in Children and Adolescents. Pediatrics. 2017;140:e20171904.'
+          };
+        }
+      },
+      { id: 'defib-energy', name: 'Defibrillation / cardioversion energy', categoryId: 'emergency', flagship: false,
+        fields: [
+          { key: 'weight', label: 'Weight', type: 'number', prefillWeight: true, default: 10, step: 0.5 },
+          { key: 'indication', label: 'Indication', type: 'seg', default: 'defib', options: [ { value: 'defib', label: 'Defibrillation (VF/pulseless VT)' }, { value: 'cardioversion', label: 'Synchronized cardioversion (unstable SVT/VT with pulse)' } ] },
+          { key: 'attempt', label: 'Attempt', type: 'seg', default: 'first', options: [ { value: 'first', label: 'First attempt' }, { value: 'subsequent', label: 'Subsequent attempt' } ] }
+        ],
+        compute: (v) => {
+          const w = v.weight;
+          let doseJ, note;
+          if (v.indication === 'defib') {
+            doseJ = v.attempt === 'first' ? 2 * w : 4 * w;
+            const maxJ = Math.min(10 * w, 200);
+            if (doseJ > maxJ) doseJ = maxJ;
+            note = v.attempt === 'first' ? 'First defibrillation attempt: 2 J/kg.' : 'Subsequent attempts: 4 J/kg (may increase further for refractory VF/VT, up to 10 J/kg or adult max, whichever is lower).';
+          } else {
+            doseJ = v.attempt === 'first' ? 1 * w : 2 * w;
+            note = v.attempt === 'first' ? 'Initial synchronized cardioversion: 0.5–1 J/kg (using 1 J/kg here).' : 'If ineffective, increase to 2 J/kg for subsequent synchronized cardioversion attempts.';
+          }
+          return {
+            value: doseJ.toFixed(0), unit: 'J', label: note,
+            interpretation: v.indication === 'defib' ? 'Unsynchronized shock for pulseless VF/VT — resume high-quality CPR immediately after the shock; do not delay for a pulse/rhythm check.' : 'Synchronized shock, timed to the R wave — ensure the defibrillator is in SYNC mode; sedate/analgese first if the patient has any perfusing rhythm and time allows.',
+            action: 'Use appropriately sized pads (adult pads once the child is large enough, generally ≥10kg/1 year, per device instructions); continue CPR cycles between shocks for pulseless rhythms per the PALS algorithm.',
+            caution: 'Do not delay chest compressions to calculate/redose energy — follow PALS sequencing (CPR → rhythm check → shock → resume CPR immediately). Transition to adult AED/energy protocols once the child reaches adult size (roughly ≥25kg or adolescent).',
+            reference: 'Pediatric Advanced Life Support (PALS) Provider Manual, American Heart Association, 2020 guidelines update.'
           };
         }
       }
