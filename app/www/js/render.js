@@ -98,6 +98,71 @@
     return svg;
   }
 
+  function svgEl(tag, attrs, children) {
+    const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.keys(attrs || {}).forEach(function (k) { node.setAttribute(k, attrs[k]); });
+    (children || []).forEach(function (c) { node.appendChild(c); });
+    return node;
+  }
+  function svgText(x, yPos, str, extraAttrs) {
+    return svgEl('text', Object.assign({ x: x, y: yPos, 'font-size': '7', fill: '#64748b' }, extraAttrs || {}), [document.createTextNode(str)]);
+  }
+
+  // Plots the phototherapy threshold curve for the selected GA/risk-factor
+  // combination (same anchors + piecewise-linear interpolation compute()
+  // itself uses, so the picture always agrees with the numeric verdict) and
+  // marks the patient's own (age, TSB) point on it. Deliberately does not
+  // attempt an exchange-transfusion tier — those are separate, higher AAP
+  // curves this app doesn't have digitized data for yet.
+  function phototherapyChart(d) {
+    const W = 320, H = 210, padL = 32, padR = 10, padT = 10, padB = 26;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const maxHour = 336;
+    const lastVal = d.anchors[d.anchors.length - 1][1];
+    const maxY = Math.max(20, Math.ceil((lastVal + 2) / 2) * 2);
+    const x = function (h) { return padL + (Math.min(h, maxHour) / maxHour) * plotW; };
+    const y = function (mg) { return padT + plotH - (Math.max(0, Math.min(mg, maxY)) / maxY) * plotH; };
+
+    const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', height: 'auto', style: 'display:block;overflow:visible' });
+
+    for (let mg = 0; mg <= maxY; mg += 2) {
+      svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: y(mg), y2: y(mg), stroke: '#e2e8f0', 'stroke-width': 0.5 }));
+      svg.appendChild(svgText(padL - 4, y(mg) + 2.5, String(mg), { 'text-anchor': 'end' }));
+    }
+    for (let h = 0; h <= maxHour; h += 48) {
+      svg.appendChild(svgEl('line', { x1: x(h), x2: x(h), y1: padT, y2: padT + plotH, stroke: '#e2e8f0', 'stroke-width': 0.5 }));
+      svg.appendChild(svgText(x(h), padT + plotH + 11, (h / 24) + 'd', { 'text-anchor': 'middle' }));
+    }
+
+    const curvePts = d.anchors.map(function (a) { return x(a[0]) + ',' + y(a[1]); }).join(' ');
+    const abovePolygon = curvePts + ' ' + x(maxHour) + ',' + y(maxY) + ' ' + x(0) + ',' + y(maxY);
+    const belowPolygon = curvePts + ' ' + x(maxHour) + ',' + y(0) + ' ' + x(0) + ',' + y(0);
+    svg.appendChild(svgEl('polygon', { points: abovePolygon, fill: 'rgba(249,115,22,0.14)' }));
+    svg.appendChild(svgEl('polygon', { points: belowPolygon, fill: 'rgba(13,148,136,0.10)' }));
+    svg.appendChild(svgEl('polyline', { points: curvePts, fill: 'none', stroke: '#a855f7', 'stroke-width': 2 }));
+
+    svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, stroke: '#94a3b8', 'stroke-width': 1 }));
+    svg.appendChild(svgEl('line', { x1: padL, x2: padL, y1: padT, y2: padT + plotH, stroke: '#94a3b8', 'stroke-width': 1 }));
+    svg.appendChild(svgText(W / 2, H - 2, 'Age (days)', { 'text-anchor': 'middle' }));
+    svg.appendChild(svgEl('text', { x: 8, y: H / 2, 'text-anchor': 'middle', 'font-size': '7', fill: '#64748b', transform: 'rotate(-90 8 ' + (H / 2) + ')' }, [document.createTextNode('TSB (mg/dL)')]));
+
+    const px = x(d.ageHours), py = y(d.tsb);
+    const dotColor = d.above ? '#dc2626' : '#0d9488';
+    svg.appendChild(svgEl('circle', { cx: px, cy: py, r: 5, fill: dotColor, stroke: '#fff', 'stroke-width': 1.5 }));
+    svg.appendChild(svgEl('text', { x: px, y: py - 9, 'text-anchor': 'middle', 'font-size': '8', 'font-weight': '700', fill: dotColor }, [document.createTextNode(d.tsb + ' mg/dL')]));
+
+    return el('div', { class: 'card', style: 'margin-bottom:12px' }, [
+      el('div', { class: 'card-kicker' }, ['Phototherapy chart']),
+      svg,
+      el('p', { class: 'text-muted', style: 'font-size:11px;margin:8px 0 0' }, [
+        'Curve: ' + d.gaUsed + ' wk, ' + (d.riskKey === 'yes' ? '≥1 risk factor' : 'no risk factors') + '. Orange = at/above phototherapy threshold; teal = below. Dot = this patient.'
+      ]),
+      el('p', { class: 'text-muted', style: 'font-size:11px;margin:2px 0 0;font-style:italic' }, [
+        'Exchange-transfusion threshold is a separate, higher curve not yet included in this chart.'
+      ])
+    ]);
+  }
+
   // ---- focus preservation across full re-renders --------------------------
   //
   // Every render tears down and rebuilds the whole screen from scratch, which
@@ -398,6 +463,9 @@
         ]),
         el('div', { class: 'text-muted', style: 'font-size:13px' }, [cv.result.label])
       ]));
+      if (cv.result.chartData) {
+        body.push(phototherapyChart(cv.result.chartData));
+      }
       if (cv.result.interpretation) {
         body.push(el('div', { class: 'card', style: 'margin-bottom:12px' }, [
           el('div', { class: 'card-kicker' }, ['Clinical interpretation']),
