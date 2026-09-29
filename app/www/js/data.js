@@ -703,6 +703,45 @@ const CALCS = [
           };
         }
       },
+      { id: 'corrected-sodium-glucose', name: 'Corrected sodium (hyperglycemia)', categoryId: 'lab', flagship: false,
+        fields: [
+          { key: 'na', label: 'Measured sodium (mEq/L)', type: 'number', default: 130, step: 1 },
+          { key: 'glucose', label: 'Glucose (mg/dL)', type: 'number', default: 400, step: 10 }
+        ],
+        compute: (v) => {
+          const corrected = v.na + 1.6 * (v.glucose - 100) / 100;
+          const alt = v.na + 2.4 * (v.glucose - 100) / 100;
+          return {
+            value: corrected.toFixed(1), unit: 'mEq/L (classic 1.6 factor; ' + alt.toFixed(1) + ' mEq/L with the 2.4 factor)',
+            label: 'Glucose-corrected sodium',
+            interpretation: corrected < 135 ? 'Still low after correcting for glucose — true (non-hyperglycemia-related) hyponatremia is likely also present.' : 'Normal once corrected for glucose — the measured low sodium is likely a dilutional effect of hyperglycemia rather than true hyponatremia.',
+            action: 'Use the corrected value, not the raw measured value, to judge whether true hyponatremia is present in a hyperglycemic patient (e.g., DKA); treat the underlying hyperglycemia and recheck sodium as glucose normalizes.',
+            caution: 'The classic correction factor is 1.6 mEq/L sodium per 100 mg/dL glucose above 100 mg/dL; some studies suggest 2.4 is more accurate at very high glucose levels — both are shown above. Does not replace clinical judgment or direct remeasurement in complex cases.',
+            reference: 'Katz MA. N Engl J Med. 1973 (1.6 factor); Hillier TA, et al. Am J Med. 1999 (2.4 factor, empirical re-derivation).'
+          };
+        }
+      },
+      { id: 'osmolar-gap', name: 'Serum osmolality / osmolar gap', categoryId: 'lab', flagship: false,
+        fields: [
+          { key: 'na', label: 'Sodium (mEq/L)', type: 'number', default: 138, step: 1 },
+          { key: 'glucose', label: 'Glucose (mg/dL)', type: 'number', default: 90, step: 1 },
+          { key: 'bun', label: 'BUN (mg/dL)', type: 'number', default: 12, step: 1 },
+          { key: 'measuredOsm', label: 'Measured osmolality (mOsm/kg) — 0 if not available', type: 'number', default: 0, step: 1 }
+        ],
+        compute: (v) => {
+          const calc = 2 * v.na + v.glucose / 18 + v.bun / 2.8;
+          const hasMeasured = v.measuredOsm > 0;
+          const gap = hasMeasured ? v.measuredOsm - calc : null;
+          return {
+            value: calc.toFixed(0), unit: 'mOsm/kg calculated' + (hasMeasured ? ' · gap ' + gap.toFixed(0) : ''),
+            label: 'Calculated serum osmolality' + (hasMeasured ? ' vs. measured ' + v.measuredOsm : ' (enter measured osmolality for the gap)'),
+            interpretation: !hasMeasured ? 'Enter a measured osmolality above to compute the osmolar gap.' : (gap > 10 ? 'Elevated osmolar gap (>10 mOsm/kg) — consider unmeasured osmotically active substances (toxic alcohols: methanol, ethylene glycol, isopropanol; mannitol; severe ketoacidosis).' : 'Osmolar gap within the typical normal range (≤10 mOsm/kg).'),
+            action: hasMeasured && gap > 10 ? 'Correlate with the anion gap and clinical context; if toxic alcohol ingestion is suspected, involve poison control/toxicology urgently — do not wait for confirmatory levels to start treatment if clinical suspicion is high.' : 'Correlate with clinical context.',
+            caution: 'The osmolar gap is insensitive early in toxic alcohol ingestion (before the parent alcohol is metabolized) — a NORMAL gap does not exclude poisoning. A high-anion-gap metabolic acidosis with a compatible history should still prompt urgent evaluation even if the osmolar gap is normal.',
+            reference: 'Standard clinical biochemistry reference; typical normal osmolar gap ≤10 mOsm/kg (institutional variation).'
+          };
+        }
+      },
       { id: 'bmi-for-age', name: 'BMI-for-age', categoryId: 'growth', flagship: false,
         fields: [
           { key: 'weight', label: 'Weight', type: 'number', prefillWeight: true, default: 18, step: 0.5 },
@@ -732,6 +771,79 @@ const CALCS = [
             action: 'Plot both weight-for-age and height-for-age on the appropriate chart; review the growth trend across visits, not just a single point.',
             caution: 'A single measurement is less informative than a growth trend — compare to prior plotted points.',
             reference: 'WHO Child Growth Standards; CDC Growth Charts.'
+          };
+        }
+      },
+      { id: 'head-circumference', name: 'Head circumference-for-age', categoryId: 'growth', flagship: false,
+        fields: [
+          { key: 'hc', label: 'Head circumference (cm)', type: 'number', default: 40, step: 0.1 },
+          { key: 'ageMonths', label: 'Age (months)', type: 'number', default: 3, step: 1 }
+        ],
+        compute: (v) => {
+          return {
+            value: v.hc.toFixed(1) + ' cm', unit: '', label: 'Recorded head circumference at ' + v.ageMonths + ' months',
+            interpretation: 'Percentile requires plotting on the WHO (0–24 mo) or CDC head-circumference-for-age chart by exact age and sex — this tool records the value but does not compute an exact percentile.',
+            action: 'Plot on the age- and sex-specific chart; evaluate the rate of head growth (trend across visits), and correlate with fontanelle exam and neurodevelopment if abnormal.',
+            caution: 'Rapidly crossing percentiles in either direction is often more concerning than a single absolute value. Macrocephaly/microcephaly thresholds are sex- and age-specific — always use the chart, not a fixed number.',
+            reference: 'WHO Child Growth Standards; CDC Growth Charts.'
+          };
+        }
+      },
+      { id: 'newborn-weight-loss', name: 'Newborn weight loss/regain', categoryId: 'growth', flagship: false,
+        fields: [
+          { key: 'birthWeight', label: 'Birth weight (g)', type: 'number', default: 3200, step: 10 },
+          { key: 'currentWeight', label: 'Current weight (g)', type: 'number', default: 3000, step: 10 },
+          { key: 'ageDays', label: 'Age (days)', type: 'number', default: 3, step: 1 }
+        ],
+        compute: (v) => {
+          const diff = v.currentWeight - v.birthWeight;
+          const pct = Math.abs(diff) / v.birthWeight * 100;
+          const isLoss = diff < 0;
+          const regained = v.currentWeight >= v.birthWeight;
+          let interp, action;
+          if (!isLoss) {
+            interp = 'At or above birth weight.';
+            action = 'On track — reassure and continue routine follow-up.';
+          } else if (pct <= 7) {
+            interp = 'Weight loss of ' + pct.toFixed(1) + '% — within the expected range for early transitional weight loss.';
+            action = 'Reassure; continue feeding support and routine follow-up (typically day 3–5 and ~2 weeks).';
+          } else if (pct <= 10) {
+            interp = 'Weight loss of ' + pct.toFixed(1) + '% — at the upper end of expected; warrants closer feeding assessment.';
+            action = 'Assess feeding (latch, milk transfer/supply, output), consider lactation support, and arrange an earlier weight check (24–48h).';
+          } else {
+            interp = 'Weight loss of ' + pct.toFixed(1) + '% — exceeds the typical 7–10% threshold.';
+            action = 'Evaluate promptly for inadequate intake/dehydration (feeding history, voiding/stooling pattern, exam); consider same-day pediatric assessment and checking bilirubin/electrolytes if clinically indicated.';
+          }
+          if (v.ageDays >= 14 && !regained) interp += ' Birth weight has not yet been regained by day 14 — this itself warrants further evaluation.';
+          return {
+            value: pct.toFixed(1), unit: '% ' + (isLoss ? 'loss' : 'gain') + ' from birth weight', label: 'Newborn weight change, day ' + v.ageDays,
+            interpretation: interp, action: action,
+            caution: 'Most healthy term newborns lose up to ~7% of birth weight in the first days and regain it by ~2 weeks; exclusively breastfed infants may lose slightly more than formula-fed infants on average. Interpret % change alongside feeding history, output, and exam — it doesn\'t diagnose the cause by itself.',
+            reference: 'AAP/Academy of Breastfeeding Medicine newborn weight loss guidance; Flaherman VJ, et al. Pediatrics. 2015 (newborn weight loss nomogram).'
+          };
+        }
+      },
+      { id: 'growth-velocity', name: 'Growth velocity (weight gain)', categoryId: 'growth', flagship: false,
+        fields: [
+          { key: 'ageMonths', label: 'Current age (months)', type: 'number', default: 2, step: 1 },
+          { key: 'previousWeight', label: 'Previous weight (g)', type: 'number', default: 4000, step: 10 },
+          { key: 'currentWeight', label: 'Current weight (g)', type: 'number', default: 4300, step: 10 },
+          { key: 'daysBetween', label: 'Days between measurements', type: 'number', default: 14, step: 1 }
+        ],
+        compute: (v) => {
+          const perDay = (v.currentWeight - v.previousWeight) / v.daysBetween;
+          let lo, hi, bracket;
+          if (v.ageMonths < 3) { lo = 20; hi = 35; bracket = '0–3 months'; }
+          else if (v.ageMonths < 6) { lo = 15; hi = 25; bracket = '3–6 months'; }
+          else if (v.ageMonths < 12) { lo = 10; hi = 15; bracket = '6–12 months'; }
+          else { lo = 5; hi = 10; bracket = '12–24 months (approx.)'; }
+          const below = perDay < lo;
+          return {
+            value: perDay.toFixed(1), unit: 'g/day', label: 'Observed weight gain (expected ~' + lo + '–' + hi + ' g/day, ' + bracket + ')',
+            interpretation: below ? 'Below the typical expected range for age — consider a growth-faltering/inadequate-intake workup.' : 'Within or above the typical expected range for age.',
+            action: below ? 'Assess feeding/intake, review for underlying illness, plot on the growth chart to assess the trend (not just this one interval), and arrange closer follow-up.' : 'Reassure; continue routine growth monitoring and plot on the growth chart.',
+            caution: 'These are approximate population-level benchmarks, not a percentile — a single interval\'s velocity is less informative than the trend plotted on a WHO/CDC growth chart over multiple visits, and healthy infants vary. Always interpret alongside the actual growth curve, feeding history, and exam.',
+            reference: 'Standard pediatric growth-velocity benchmarks (Nelson Textbook of Pediatrics; WHO Child Growth Standards).'
           };
         }
       },
@@ -766,6 +878,59 @@ const CALCS = [
             action: total <= 8 ? 'Consider airway protection/intubation, urgent neuroimaging, and neurosurgical consultation.' : total <= 12 ? 'Close neurological monitoring; consider CT imaging per clinical judgment.' : 'Routine neurological monitoring; reassess with any change in status.',
             caution: 'The verbal options above pair each adult-style descriptor with its infant/preverbal (modified pediatric GCS) equivalent — pick whichever fits the child\'s developmental stage. Eye-opening and motor domains use the same criteria across ages. Serial trends matter more than a single score, and in infants <2 years interpret cautiously alongside overall clinical appearance.',
             reference: 'Teasdale G, Jennett B. Lancet. 1974; James HE, Trauner DA. Pediatric coma scale (modified/pediatric GCS verbal criteria), 1985; PALS Provider Manual.'
+          };
+        }
+      },
+      { id: 'avpu', name: 'AVPU scale', categoryId: 'neuro', flagship: false,
+        fields: [
+          { key: 'level', label: 'Level of consciousness', type: 'seg', default: 'A', options: [ { value: 'A', label: 'Alert' }, { value: 'V', label: 'Voice' }, { value: 'P', label: 'Pain' }, { value: 'U', label: 'Unresponsive' } ] }
+        ],
+        compute: (v) => {
+          const map = {
+            A: { note: 'Alert — spontaneously awake and interactive.', approx: '15', urgent: false },
+            V: { note: 'Responds to voice — roughly equivalent to GCS ≤13.', approx: '≤13', urgent: false },
+            P: { note: 'Responds only to pain — roughly equivalent to GCS ≤8; consider airway protection.', approx: '≤8', urgent: true },
+            U: { note: 'Unresponsive to voice and pain — roughly equivalent to GCS ≤6; airway at risk.', approx: '≤6', urgent: true }
+          };
+          const m = map[v.level];
+          return {
+            value: v.level, unit: '', label: m.note,
+            interpretation: 'AVPU is a fast triage-level consciousness screen; approximate GCS equivalent: ' + m.approx + '. "P" or "U" corresponds roughly to the traditional GCS ≤8 threshold for considering airway protection.',
+            action: m.urgent ? 'Assess airway patency and protective reflexes; consider positioning, suction, and escalation for definitive airway management; obtain a full GCS and treat reversible causes (hypoglycemia, hypoxia, toxins, seizure).' : 'Continue monitoring; obtain a full GCS if there is any deterioration.',
+            caution: 'AVPU is a rapid screen, not a substitute for a full GCS or serial neurological assessment — use GCS when a graded, trackable score matters, especially in trauma.',
+            reference: 'Kelly CA, et al. Emerg Med J. 2004 (AVPU–GCS correlation); widely used prehospital/triage tool.'
+          };
+        }
+      },
+      { id: 'status-epilepticus', name: 'Status epilepticus — timed management', categoryId: 'neuro', flagship: false,
+        fields: [
+          { key: 'minutes', label: 'Minutes of ongoing seizure activity', type: 'number', default: 5, step: 1 }
+        ],
+        compute: (v) => {
+          const m = v.minutes;
+          let stage, action;
+          if (m < 5) {
+            stage = 'Stabilization phase (0–5 min)';
+            action = 'ABCs, oxygen, monitor, check glucose (treat if low), obtain IV/IO access, note time of onset. Most seizures self-terminate by 5 minutes — prepare to treat if this one doesn\'t.';
+          } else if (m < 10) {
+            stage = 'First-line therapy (5–10 min) — this is status epilepticus';
+            action = 'Give a first benzodiazepine now if not already given (IV lorazepam, or IO/IV/IM/intranasal/buccal midazolam, or rectal diazepam if no access) at a weight-based dose. May repeat once if the seizure continues ~5 minutes after the first dose with no response.';
+          } else if (m < 20) {
+            stage = 'Second-line therapy (10–20 min, still seizing after 2 benzodiazepine doses)';
+            action = 'Load a second-line antiseizure medication — levetiracetam, fosphenytoin, or valproate per local protocol/contraindications. Do not exceed 2 benzodiazepine doses before escalating.';
+          } else if (m < 40) {
+            stage = 'Refractory status epilepticus (20–40 min)';
+            action = 'Consider a second second-line agent (different from the first) if the first didn\'t terminate the seizure; involve critical care/neurology; prepare for possible rapid-sequence intubation.';
+          } else {
+            stage = 'Super-refractory status epilepticus (≥40 min)';
+            action = 'RSI with a continuous anesthetic infusion (e.g., midazolam, pentobarbital, or propofol per unit protocol) under EEG monitoring in ICU; involve neurology/critical care urgently if not already.';
+          }
+          return {
+            value: stage, unit: '', label: Math.round(m) + ' minutes of ongoing seizure activity',
+            interpretation: 'Seizures lasting ≥5 minutes are treated as status epilepticus and should not simply be observed further — timely escalation improves the chance of termination.',
+            action: action,
+            caution: 'This is a timing guide only — follow your institution\'s specific status epilepticus protocol and drug doses (see this app\'s Weight-based drug dosing calculator for benzodiazepine/second-line agent doses). Identify and treat reversible causes (hypoglycemia, hyponatremia, hypoxia, toxin/withdrawal, fever/infection) in parallel at every stage.',
+            reference: 'Glauser T, et al. Epilepsy Curr. 2016 (AES pediatric status epilepticus treatment algorithm); PALS status epilepticus guidance.'
           };
         }
       },
