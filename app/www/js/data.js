@@ -829,7 +829,7 @@ const CALCS = [
             action: above ? 'Initiate phototherapy per unit protocol; recheck TSB per protocol (typically within 4–24 hours depending on trajectory and risk factors).' : 'Continue routine monitoring; repeat TSB/TcB per standard newborn bilirubin screening schedule and risk trajectory.',
             caution: 'Thresholds are digitized from the AAP 2022 hour-specific phototherapy figures at roughly 12-hour resolution — treat as approximate (±~0.5–1 mg/dL) and confirm against the official chart/AAP BiliTool before any clinical decision, especially when TSB is close to the threshold. Neurotoxicity risk factors include isoimmune or other hemolytic disease, G6PD deficiency, birth asphyxia, sepsis, acidosis, albumin <3.0 g/dL, significant lethargy, and temperature instability. Do not subtract direct/conjugated bilirubin from TSB before comparing to the threshold. This gives the phototherapy threshold only — it does NOT provide exchange-transfusion or escalation-of-care thresholds, which are separate, higher curves.',
             reference: 'AAP Clinical Practice Guideline (Kemper AR et al., Pediatrics 2022;150:e2022058859); figures as reproduced via UpToDate, © 2022 AAP.',
-            chartData: { anchors: anchors, gaUsed: gaUsed, riskKey: riskKey, ageHours: h, tsb: v.tsb, above: above }
+            chartData: { allCurves: table, gaUsed: gaUsed, riskKey: riskKey, ageHours: h, tsb: v.tsb, above: above }
           };
         }
       },

@@ -114,12 +114,19 @@
   // marks the patient's own (age, TSB) point on it. Deliberately does not
   // attempt an exchange-transfusion tier — those are separate, higher AAP
   // curves this app doesn't have digitized data for yet.
+  // Redraws the full multi-curve AAP nomogram (all gestational-age curves
+  // for the selected risk-factor status, alternating solid/dashed from the
+  // top curve down, same as the source figure's own convention) rather than
+  // just the one curve that applies to this patient — closer to "the chart"
+  // itself, with the patient's own curve bolded/highlighted and their point
+  // plotted on it.
   function phototherapyChart(d) {
-    const W = 320, H = 210, padL = 32, padR = 10, padT = 10, padB = 26;
+    const W = 320, H = 250, padL = 32, padR = 10, padT = 10, padB = 26;
     const plotW = W - padL - padR, plotH = H - padT - padB;
     const maxHour = 336;
-    const lastVal = d.anchors[d.anchors.length - 1][1];
-    const maxY = Math.max(20, Math.ceil((lastVal + 2) / 2) * 2);
+    const gaKeysAsc = Object.keys(d.allCurves).map(Number).sort(function (a, b) { return a - b; });
+    const maxVal = Math.max.apply(null, gaKeysAsc.map(function (k) { const arr = d.allCurves[k]; return arr[arr.length - 1][1]; }));
+    const maxY = Math.max(20, Math.ceil((maxVal + 2) / 2) * 2);
     const x = function (h) { return padL + (Math.min(h, maxHour) / maxHour) * plotW; };
     const y = function (mg) { return padT + plotH - (Math.max(0, Math.min(mg, maxY)) / maxY) * plotH; };
 
@@ -133,29 +140,46 @@
       svg.appendChild(svgEl('line', { x1: x(h), x2: x(h), y1: padT, y2: padT + plotH, stroke: '#e2e8f0', 'stroke-width': 0.5 }));
       svg.appendChild(svgText(x(h), padT + plotH + 11, (h / 24) + 'd', { 'text-anchor': 'middle' }));
     }
-
-    const curvePts = d.anchors.map(function (a) { return x(a[0]) + ',' + y(a[1]); }).join(' ');
-    const abovePolygon = curvePts + ' ' + x(maxHour) + ',' + y(maxY) + ' ' + x(0) + ',' + y(maxY);
-    const belowPolygon = curvePts + ' ' + x(maxHour) + ',' + y(0) + ' ' + x(0) + ',' + y(0);
-    svg.appendChild(svgEl('polygon', { points: abovePolygon, fill: 'rgba(249,115,22,0.14)' }));
-    svg.appendChild(svgEl('polygon', { points: belowPolygon, fill: 'rgba(13,148,136,0.10)' }));
-    svg.appendChild(svgEl('polyline', { points: curvePts, fill: 'none', stroke: '#a855f7', 'stroke-width': 2 }));
-
     svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, stroke: '#94a3b8', 'stroke-width': 1 }));
     svg.appendChild(svgEl('line', { x1: padL, x2: padL, y1: padT, y2: padT + plotH, stroke: '#94a3b8', 'stroke-width': 1 }));
     svg.appendChild(svgText(W / 2, H - 2, 'Age (days)', { 'text-anchor': 'middle' }));
-    svg.appendChild(svgEl('text', { x: 8, y: H / 2, 'text-anchor': 'middle', 'font-size': '7', fill: '#64748b', transform: 'rotate(-90 8 ' + (H / 2) + ')' }, [document.createTextNode('TSB (mg/dL)')]));
+
+    const palette = ['#0ea5e9', '#ef4444', '#f59e0b', '#14b8a6', '#a855f7', '#16a34a'];
+    const gaKeysDesc = gaKeysAsc.slice().reverse();
+    const legendItems = gaKeysDesc.map(function (ga, idx) {
+      const arr = d.allCurves[ga];
+      const pts = arr.map(function (a) { return x(a[0]) + ',' + y(a[1]); }).join(' ');
+      const color = palette[gaKeysAsc.indexOf(ga)];
+      const isSelected = ga === d.gaUsed;
+      const dashed = idx % 2 === 1;
+      svg.appendChild(svgEl('polyline', {
+        points: pts, fill: 'none', stroke: color,
+        'stroke-width': isSelected ? 3 : 1.3,
+        opacity: isSelected ? 1 : 0.4,
+        'stroke-dasharray': dashed ? '5,3' : 'none'
+      }));
+      return { ga: ga, color: color, dashed: dashed, selected: isSelected };
+    });
 
     const px = x(d.ageHours), py = y(d.tsb);
     const dotColor = d.above ? '#dc2626' : '#0d9488';
     svg.appendChild(svgEl('circle', { cx: px, cy: py, r: 5, fill: dotColor, stroke: '#fff', 'stroke-width': 1.5 }));
     svg.appendChild(svgEl('text', { x: px, y: py - 9, 'text-anchor': 'middle', 'font-size': '8', 'font-weight': '700', fill: dotColor }, [document.createTextNode(d.tsb + ' mg/dL')]));
 
+    const legend = el('div', { style: 'display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:8px' });
+    legendItems.forEach(function (it) {
+      legend.appendChild(el('div', { style: 'display:flex;align-items:center;gap:4px;font-size:10.5px;font-weight:' + (it.selected ? '800' : '500') + ';opacity:' + (it.selected ? '1' : '0.65') }, [
+        el('span', { style: 'display:inline-block;width:14px;border-top:' + (it.selected ? '3px' : '2px') + ' ' + (it.dashed ? 'dashed' : 'solid') + ' ' + it.color }, []),
+        el('span', {}, [it.ga + ' wk' + (it.selected ? ' (this patient)' : '')])
+      ]));
+    });
+
     return el('div', { class: 'card', style: 'margin-bottom:12px' }, [
-      el('div', { class: 'card-kicker' }, ['Phototherapy chart']),
+      el('div', { class: 'card-kicker' }, ['Phototherapy chart — ' + (d.riskKey === 'yes' ? '≥1 neurotoxicity risk factor' : 'no risk factors')]),
       svg,
+      legend,
       el('p', { class: 'text-muted', style: 'font-size:11px;margin:8px 0 0' }, [
-        'Curve: ' + d.gaUsed + ' wk, ' + (d.riskKey === 'yes' ? '≥1 risk factor' : 'no risk factors') + '. Orange = at/above phototherapy threshold; teal = below. Dot = this patient.'
+        'Bold curve = this patient’s gestational age; others shown for context, as in the source chart. Dot = ' + d.tsb + ' mg/dL at ' + d.ageHours + 'h (' + (d.above ? 'at/above' : 'below') + ' this patient’s threshold).'
       ]),
       el('p', { class: 'text-muted', style: 'font-size:11px;margin:2px 0 0;font-style:italic' }, [
         'Exchange-transfusion threshold is a separate, higher curve not yet included in this chart.'
